@@ -4,6 +4,10 @@
 
 项目是一个单体应用：前端使用 React + TypeScript，后端使用 Express + TypeScript，数据保存在本地 SQLite 文件中。
 
+## 应用截图
+
+![基点应用截图](doc/001.png)
+
 ## 功能
 
 - 按基金代码添加基金，并自动同步历史净值。
