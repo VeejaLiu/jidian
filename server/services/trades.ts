@@ -1,0 +1,143 @@
+import { db } from "../db/database";
+import type { TradeRecord } from "../types";
+import { toHttpError } from "../utils/httpError";
+import { assertDate, assertPositiveNumber, cleanText, optionalPositiveNumber } from "../utils/validators";
+
+export function listTrades(fundId: number, order: "ASC" | "DESC" = "DESC") {
+  const direction = order === "ASC" ? "ASC" : "DESC";
+  return db
+    .prepare(
+      `SELECT
+        id,
+        trade_type AS type,
+        trade_date AS date,
+        trade_nav AS nav,
+        amount,
+        shares,
+        status,
+        note
+       FROM trade_records
+       WHERE fund_id = ?
+       ORDER BY trade_date ${direction}, id ${direction}`,
+    )
+    .all(fundId) as TradeRecord[];
+}
+
+export function calculatePositionFromTrades(trades: TradeRecord[]) {
+  let totalAmount = 0;
+  let totalShares = 0;
+  let realizedAmount = 0;
+  let realizedCost = 0;
+
+  trades.filter((trade) => trade.status !== "pending").forEach((trade) => {
+    const amount = Number(trade.amount);
+    const shares = Number(trade.shares);
+    if (!Number.isFinite(amount) || amount <= 0 || !Number.isFinite(shares) || shares <= 0) return;
+
+    if (trade.type === "buy") {
+      totalAmount += amount;
+      totalShares += shares;
+      return;
+    }
+
+    if (trade.type === "sell") {
+      const soldShares = Math.min(shares, totalShares);
+      if (soldShares <= 0) return;
+      const averageCost = totalShares > 0 ? totalAmount / totalShares : 0;
+      const costReduction = averageCost * soldShares;
+      totalAmount -= costReduction;
+      totalShares -= soldShares;
+      realizedAmount += amount;
+      realizedCost += costReduction;
+
+      if (Math.abs(totalAmount) < 0.000001) totalAmount = 0;
+      if (Math.abs(totalShares) < 0.000001) totalShares = 0;
+    }
+  });
+
+  return {
+    totalAmount,
+    totalShares,
+    averageCost: totalShares > 0 ? totalAmount / totalShares : null,
+    realizedAmount,
+    realizedCost,
+    realizedProfit: realizedAmount - realizedCost,
+  };
+}
+
+function findNegativePositionDate(trades: TradeRecord[]) {
+  let totalShares = 0;
+
+  for (const trade of trades.filter((item) => item.status !== "pending")) {
+    const shares = Number(trade.shares);
+    if (!Number.isFinite(shares) || shares <= 0) continue;
+
+    if (trade.type === "buy") {
+      totalShares += shares;
+    } else if (trade.type === "sell") {
+      totalShares -= shares;
+    }
+
+    if (totalShares < -0.000001) return trade.date;
+  }
+
+  return null;
+}
+
+function sortTradesByTimeline(trades: TradeRecord[]) {
+  return [...trades].sort((left, right) => {
+    if (left.date === right.date) {
+      if (left.type === right.type) return Number(left.id || 0) - Number(right.id || 0);
+      return left.type === "buy" ? -1 : 1;
+    }
+    return left.date.localeCompare(right.date);
+  });
+}
+
+export function getPosition(fundId: number) {
+  return calculatePositionFromTrades(listTrades(fundId, "ASC"));
+}
+
+export function buildTradeInput(fundId: number, body: any, forcedType: "buy" | "sell" | null = null): TradeRecord {
+  const tradeType = forcedType || cleanText(body.type);
+  if (!["buy", "sell"].includes(tradeType)) {
+    throw toHttpError("交易类型必须是买入或卖出", 400);
+  }
+
+  const tradeDate = assertDate(body.date, "交易日期");
+  const amount = assertPositiveNumber(body.amount, tradeType === "buy" ? "买入金额" : "卖出金额");
+  let nav = optionalPositiveNumber(body.nav, "交易净值");
+  let status: "pending" | "confirmed" = "confirmed";
+
+  if (!nav) {
+    const navRow = db
+      .prepare("SELECT unit_nav FROM nav_history WHERE fund_id = ? AND nav_date = ?")
+      .get(fundId, tradeDate) as { unit_nav?: number } | undefined;
+    if (!navRow) {
+      status = "pending";
+      nav = null;
+    } else {
+      nav = Number(navRow.unit_nav);
+    }
+  }
+
+  return {
+    type: tradeType as "buy" | "sell",
+    date: tradeDate,
+    nav,
+    amount,
+    shares: nav ? amount / nav : null,
+    status,
+    note: cleanText(body.note),
+  };
+}
+
+export function assertTradeTimeline(fundId: number, candidateTrade: TradeRecord, ignoredTradeId: number | null = null) {
+  if (candidateTrade.status === "pending") return;
+  const existingTrades = listTrades(fundId, "ASC").filter((trade) => trade.id !== ignoredTradeId);
+  const candidateTrades = sortTradesByTimeline([...existingTrades, candidateTrade]);
+  const negativeDate = findNegativePositionDate(candidateTrades);
+  if (negativeDate) {
+    throw toHttpError("卖出份额超过当前持有份额", 400);
+  }
+}
