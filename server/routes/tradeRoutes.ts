@@ -2,19 +2,22 @@ import { Router } from "express";
 import { db } from "../db/database";
 import { getFundById, mapFund } from "../services/funds";
 import { assertTradeTimeline, buildTradeInput } from "../services/trades";
+import { getAccountIdFromRequest } from "../services/accounts";
 
 export const tradeRoutes = Router();
 
 function createTradeRecord(req: any, res: any, next: any, forcedType: "buy" | null = null) {
   try {
     const fundId = Number(req.params.id);
+    const accountId = getAccountIdFromRequest(req);
     const trade = buildTradeInput(fundId, req.body, forcedType);
-    assertTradeTimeline(fundId, trade);
+    assertTradeTimeline(fundId, accountId, trade);
 
     db.prepare(
-      `INSERT INTO trade_records (fund_id, trade_type, trade_date, trade_nav, amount, shares, status, note, confirmed_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO trade_records (account_id, fund_id, trade_type, trade_date, trade_nav, amount, shares, status, note, confirmed_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
+      accountId,
       fundId,
       trade.type,
       trade.date,
@@ -26,7 +29,7 @@ function createTradeRecord(req: any, res: any, next: any, forcedType: "buy" | nu
       trade.status === "confirmed" ? new Date().toISOString() : null,
     );
 
-    res.status(201).json({ fund: mapFund(getFundById(fundId)) });
+    res.status(201).json({ fund: mapFund(getFundById(fundId, { accountId }), accountId) });
   } catch (error) {
     next(error);
   }
@@ -44,8 +47,8 @@ tradeRoutes.put("/api/trades/:id", (req, res, next) => {
   try {
     const tradeId = Number(req.params.id);
     const currentTrade = db
-      .prepare("SELECT id, fund_id, source_buy_id FROM trade_records WHERE id = ?")
-      .get(tradeId) as { id: number; fund_id: number; source_buy_id?: number } | undefined;
+      .prepare("SELECT id, account_id, fund_id, source_buy_id FROM trade_records WHERE id = ?")
+      .get(tradeId) as { id: number; account_id: number; fund_id: number; source_buy_id?: number } | undefined;
 
     if (!currentTrade) {
       const error = new Error("交易记录不存在") as Error & { status?: number };
@@ -54,7 +57,7 @@ tradeRoutes.put("/api/trades/:id", (req, res, next) => {
     }
 
     const trade = buildTradeInput(currentTrade.fund_id, req.body);
-    assertTradeTimeline(currentTrade.fund_id, { ...trade, id: tradeId }, tradeId);
+    assertTradeTimeline(currentTrade.fund_id, currentTrade.account_id, { ...trade, id: tradeId }, tradeId);
 
     const updateTrade = db.transaction(() => {
       db.prepare(
@@ -86,7 +89,7 @@ tradeRoutes.put("/api/trades/:id", (req, res, next) => {
     });
 
     updateTrade();
-    res.json({ fund: mapFund(getFundById(currentTrade.fund_id)) });
+    res.json({ fund: mapFund(getFundById(currentTrade.fund_id, { accountId: currentTrade.account_id }), currentTrade.account_id) });
   } catch (error) {
     next(error);
   }

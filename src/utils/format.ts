@@ -10,6 +10,13 @@ export function formatPercent(value: unknown) {
   return Number.isFinite(number) ? `${number.toFixed(2)}%` : "--";
 }
 
+export function formatSignedPercent(value: unknown) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "--";
+  if (Math.abs(number) < 0.005) return "0.00%";
+  return `${number > 0 ? "+" : ""}${number.toFixed(2)}%`;
+}
+
 export function formatMoney(value: unknown) {
   const number = Number(value);
   return Number.isFinite(number) ? number.toFixed(2) : "--";

@@ -12,6 +12,135 @@ function tableExists(tableName: string) {
   );
 }
 
+function hasMigrationFlag(key: string) {
+  const row = db
+    .prepare("SELECT value FROM app_metadata WHERE key = ?")
+    .get(key) as { value?: string } | undefined;
+  return row?.value === "1";
+}
+
+function setMigrationFlag(key: string) {
+  db.prepare(
+    `INSERT INTO app_metadata (key, value)
+     VALUES (?, '1')
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = datetime('now')`,
+  ).run(key);
+}
+
+function defaultAccountId() {
+  const row = db
+    .prepare("SELECT id FROM user_accounts ORDER BY id LIMIT 1")
+    .get() as { id: number } | undefined;
+  if (row?.id) return row.id;
+
+  const result = db.prepare("INSERT INTO user_accounts (name) VALUES (?)").run("默认账户");
+  return Number(result.lastInsertRowid);
+}
+
+export function migrateAccounts() {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS app_metadata (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS user_accounts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TRIGGER IF NOT EXISTS trg_user_accounts_updated_at
+    AFTER UPDATE ON user_accounts
+    FOR EACH ROW
+    WHEN NEW.updated_at = OLD.updated_at
+    BEGIN
+      UPDATE user_accounts SET updated_at = datetime('now') WHERE id = NEW.id;
+    END;
+
+    CREATE TABLE IF NOT EXISTS user_funds (
+      account_id INTEGER NOT NULL,
+      fund_id INTEGER NOT NULL,
+      is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1)),
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      PRIMARY KEY (account_id, fund_id),
+      FOREIGN KEY (account_id) REFERENCES user_accounts (id) ON DELETE CASCADE,
+      FOREIGN KEY (fund_id) REFERENCES funds (id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_user_funds_account_active
+      ON user_funds (account_id, is_active);
+
+    CREATE TRIGGER IF NOT EXISTS trg_user_funds_updated_at
+    AFTER UPDATE ON user_funds
+    FOR EACH ROW
+    WHEN NEW.updated_at = OLD.updated_at
+    BEGIN
+      UPDATE user_funds SET updated_at = datetime('now') WHERE account_id = NEW.account_id AND fund_id = NEW.fund_id;
+    END;
+  `);
+
+  const accountId = defaultAccountId();
+  const hadUserFundsBeforeMigration = (db
+    .prepare("SELECT COUNT(*) AS total FROM user_funds")
+    .get() as { total: number }).total > 0;
+
+  const tradeColumns = tableExists("trade_records") ? columnNames("trade_records") : [];
+  if (tradeColumns.length && !tradeColumns.includes("account_id")) {
+    db.exec("ALTER TABLE trade_records ADD COLUMN account_id INTEGER NOT NULL DEFAULT 1;");
+    db.prepare("UPDATE trade_records SET account_id = ? WHERE account_id = 1").run(accountId);
+  }
+
+  const buyColumns = tableExists("buy_records") ? columnNames("buy_records") : [];
+  if (buyColumns.length && !buyColumns.includes("account_id")) {
+    db.exec("ALTER TABLE buy_records ADD COLUMN account_id INTEGER NOT NULL DEFAULT 1;");
+    db.prepare("UPDATE buy_records SET account_id = ? WHERE account_id = 1").run(accountId);
+  }
+
+  if (!hadUserFundsBeforeMigration && !hasMigrationFlag("legacy_funds_bound_to_default_account")) {
+    db.prepare(
+      `INSERT OR IGNORE INTO user_funds (account_id, fund_id, is_active)
+       SELECT ?, id, is_active FROM funds`,
+    ).run(accountId);
+    setMigrationFlag("legacy_funds_bound_to_default_account");
+  }
+
+  if (!hasMigrationFlag("default_account_orphan_fund_links_repaired")) {
+    db.prepare(
+      `DELETE FROM user_funds
+       WHERE account_id = ?
+         AND NOT EXISTS (
+           SELECT 1
+           FROM trade_records tr
+           WHERE tr.account_id = user_funds.account_id
+             AND tr.fund_id = user_funds.fund_id
+         )
+         AND EXISTS (
+           SELECT 1
+           FROM trade_records tr
+           WHERE tr.account_id != user_funds.account_id
+             AND tr.fund_id = user_funds.fund_id
+         )
+         AND EXISTS (
+           SELECT 1
+           FROM user_funds owner_uf
+           WHERE owner_uf.account_id != user_funds.account_id
+             AND owner_uf.fund_id = user_funds.fund_id
+             AND owner_uf.created_at < user_funds.created_at
+         )`,
+    ).run(accountId);
+    setMigrationFlag("default_account_orphan_fund_links_repaired");
+  }
+
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_trade_records_fund_date
+      ON trade_records (account_id, fund_id, trade_date DESC, id DESC);
+  `);
+}
+
 export function migrateTradeRecordsForPendingStatus() {
   db.exec(`
     DROP VIEW IF EXISTS fund_trigger_status;
@@ -31,6 +160,7 @@ export function migrateTradeRecordsForPendingStatus() {
       db.exec(`
         INSERT OR IGNORE INTO trade_records (
           id,
+          account_id,
           fund_id,
           trade_type,
           trade_date,
@@ -45,6 +175,7 @@ export function migrateTradeRecordsForPendingStatus() {
         )
         SELECT
           id,
+          COALESCE(account_id, 1),
           fund_id,
           trade_type,
           trade_date,
@@ -72,6 +203,7 @@ export function migrateTradeRecordsForPendingStatus() {
 
       CREATE TABLE IF NOT EXISTS trade_records_new (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        account_id INTEGER NOT NULL DEFAULT 1,
         fund_id INTEGER NOT NULL,
         trade_type TEXT NOT NULL CHECK (trade_type IN ('buy', 'sell')),
         trade_date TEXT NOT NULL CHECK (date(trade_date) = trade_date),
@@ -83,11 +215,13 @@ export function migrateTradeRecordsForPendingStatus() {
         source_buy_id INTEGER,
         confirmed_at TEXT,
         created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        FOREIGN KEY (account_id) REFERENCES user_accounts (id) ON DELETE CASCADE,
         FOREIGN KEY (fund_id) REFERENCES funds (id) ON DELETE CASCADE
       );
 
       INSERT INTO trade_records_new (
         id,
+        account_id,
         fund_id,
         trade_type,
         trade_date,
@@ -102,6 +236,7 @@ export function migrateTradeRecordsForPendingStatus() {
       )
       SELECT
         id,
+        COALESCE(account_id, 1),
         fund_id,
         trade_type,
         trade_date,
@@ -119,7 +254,7 @@ export function migrateTradeRecordsForPendingStatus() {
       ALTER TABLE trade_records_new RENAME TO trade_records;
 
       CREATE INDEX IF NOT EXISTS idx_trade_records_fund_date
-        ON trade_records (fund_id, trade_date DESC, id DESC);
+        ON trade_records (account_id, fund_id, trade_date DESC, id DESC);
 
       CREATE INDEX IF NOT EXISTS idx_trade_records_source_buy
         ON trade_records (source_buy_id)
@@ -130,8 +265,9 @@ export function migrateTradeRecordsForPendingStatus() {
   }
 
   db.exec(`
-    INSERT INTO trade_records (
-      fund_id,
+	    INSERT INTO trade_records (
+	      account_id,
+	      fund_id,
       trade_type,
       trade_date,
       trade_nav,
@@ -143,8 +279,9 @@ export function migrateTradeRecordsForPendingStatus() {
       confirmed_at,
       created_at
     )
-    SELECT
-      br.fund_id,
+	    SELECT
+	      br.account_id,
+	      br.fund_id,
       'buy',
       br.buy_date,
       br.buy_nav,
@@ -160,10 +297,11 @@ export function migrateTradeRecordsForPendingStatus() {
       AND COALESCE(br.amount, br.buy_nav * br.shares) > 0
       AND NOT EXISTS (
         SELECT 1
-        FROM trade_records tr
-        WHERE tr.trade_type = 'buy'
-          AND tr.source_buy_id = br.id
-      );
+	        FROM trade_records tr
+	        WHERE tr.trade_type = 'buy'
+	          AND tr.source_buy_id = br.id
+	          AND tr.account_id = br.account_id
+	      );
 
     DROP VIEW IF EXISTS fund_trigger_status;
     DROP VIEW IF EXISTS latest_buy;
@@ -171,6 +309,7 @@ export function migrateTradeRecordsForPendingStatus() {
     CREATE VIEW latest_buy AS
     SELECT
       tr.id,
+      tr.account_id,
       tr.fund_id,
       tr.trade_date AS buy_date,
       tr.trade_nav AS buy_nav,
@@ -182,7 +321,8 @@ export function migrateTradeRecordsForPendingStatus() {
     WHERE NOT EXISTS (
       SELECT 1
       FROM trade_records newer
-      WHERE newer.fund_id = tr.fund_id
+      WHERE newer.account_id = tr.account_id
+        AND newer.fund_id = tr.fund_id
         AND newer.trade_type = 'buy'
         AND newer.status = 'confirmed'
         AND (
@@ -195,6 +335,7 @@ export function migrateTradeRecordsForPendingStatus() {
 
     CREATE VIEW fund_trigger_status AS
     SELECT
+      uf.account_id,
       f.id AS fund_id,
       f.code,
       f.name,
@@ -219,9 +360,10 @@ export function migrateTradeRecordsForPendingStatus() {
         ELSE 'waiting'
       END AS status
     FROM funds f
+    JOIN user_funds uf ON uf.fund_id = f.id
     LEFT JOIN strategy_settings ss ON ss.fund_id = f.id
-    LEFT JOIN latest_buy lb ON lb.fund_id = f.id
+    LEFT JOIN latest_buy lb ON lb.account_id = uf.account_id AND lb.fund_id = f.id
     LEFT JOIN latest_nav ln ON ln.fund_id = f.id
-    WHERE f.is_active = 1;
+    WHERE uf.is_active = 1;
   `);
 }

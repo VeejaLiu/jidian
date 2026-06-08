@@ -1,8 +1,9 @@
 import { db } from "../db/database";
 import { listTrades, getPosition, calculatePositionFromTrades } from "./trades";
 
-export function getFundById(id: number, options: { includeHidden?: boolean } = {}) {
-  const activeFilter = options.includeHidden ? "" : "AND f.is_active = 1";
+export function getFundById(id: number, options: { includeHidden?: boolean; accountId?: number } = {}) {
+  const activeFilter = options.includeHidden ? "" : "AND uf.is_active = 1";
+  const accountFilter = options.accountId ? "AND uf.account_id = @accountId" : "";
   return db
     .prepare(
       `SELECT
@@ -19,14 +20,15 @@ export function getFundById(id: number, options: { includeHidden?: boolean } = {
         t.required_drop_percent,
         t.status
       FROM funds f
+      JOIN user_funds uf ON uf.fund_id = f.id
       LEFT JOIN strategy_settings s ON s.fund_id = f.id
-      LEFT JOIN fund_trigger_status t ON t.fund_id = f.id
-      WHERE f.id = ? ${activeFilter}`,
+      LEFT JOIN fund_trigger_status t ON t.account_id = uf.account_id AND t.fund_id = f.id
+      WHERE f.id = @id ${accountFilter} ${activeFilter}`,
     )
-    .get(id) as any;
+    .get({ id, accountId: options.accountId }) as any;
 }
 
-export function mapFund(row: any) {
+export function mapFund(row: any, accountId: number) {
   const navHistory = db
     .prepare(
       `SELECT id, nav_date AS date, unit_nav AS nav, accumulated_nav AS accumulatedNav
@@ -37,8 +39,8 @@ export function mapFund(row: any) {
     )
     .all(row.id);
 
-  const trades = listTrades(row.id, "DESC");
-  const position = getPosition(row.id);
+  const trades = listTrades(row.id, accountId, "DESC");
+  const position = getPosition(row.id, accountId);
   const buys = trades.filter((trade) => trade.type === "buy");
 
   return {
@@ -77,10 +79,28 @@ export function getPaginatedNavHistory(fundId: number, page: unknown, pageSize: 
   const offset = (safePage - 1) * safePageSize;
   const rows = db
     .prepare(
-      `SELECT id, nav_date AS date, unit_nav AS nav, accumulated_nav AS accumulatedNav
-       FROM nav_history
-       WHERE fund_id = ?
-       ORDER BY nav_date DESC
+      `WITH nav_with_change AS (
+         SELECT
+           id,
+           nav_date AS date,
+           unit_nav AS nav,
+           accumulated_nav AS accumulatedNav,
+           LAG(unit_nav) OVER (ORDER BY nav_date ASC, id ASC) AS previousNav
+         FROM nav_history
+         WHERE fund_id = ?
+       )
+       SELECT
+         id,
+         date,
+         nav,
+         accumulatedNav,
+         previousNav,
+         CASE
+           WHEN previousNav IS NULL OR previousNav <= 0 THEN NULL
+           ELSE ROUND((nav - previousNav) / previousNav * 100, 4)
+         END AS dailyChangePercent
+       FROM nav_with_change
+       ORDER BY date DESC
        LIMIT ? OFFSET ?`,
     )
     .all(fundId, safePageSize, offset);
@@ -94,16 +114,30 @@ export function getPaginatedNavHistory(fundId: number, page: unknown, pageSize: 
   };
 }
 
-export function getChartData(fundId: number) {
+export function getChartData(fundId: number, accountId: number) {
   const nav = db
     .prepare(
-      `SELECT nav_date AS date, unit_nav AS nav
-       FROM nav_history
-       WHERE fund_id = ?
-       ORDER BY nav_date ASC`,
+      `WITH nav_with_change AS (
+         SELECT
+           nav_date AS date,
+           unit_nav AS nav,
+           LAG(unit_nav) OVER (ORDER BY nav_date ASC, id ASC) AS previousNav
+         FROM nav_history
+         WHERE fund_id = ?
+       )
+       SELECT
+         date,
+         nav,
+         previousNav,
+         CASE
+           WHEN previousNav IS NULL OR previousNav <= 0 THEN NULL
+           ELSE ROUND((nav - previousNav) / previousNav * 100, 4)
+         END AS dailyChangePercent
+       FROM nav_with_change
+       ORDER BY date ASC`,
     )
     .all(fundId);
-  const trades = listTrades(fundId, "ASC");
+  const trades = listTrades(fundId, accountId, "ASC");
   const position = calculatePositionFromTrades(trades);
   const buys = trades.filter((trade) => trade.type === "buy");
   const sells = trades.filter((trade) => trade.type === "sell");
@@ -111,7 +145,7 @@ export function getChartData(fundId: number) {
   return { nav, trades, buys, sells, position };
 }
 
-export function listFunds(options: { hidden?: boolean } = {}) {
+export function listFunds(accountId: number, options: { hidden?: boolean } = {}) {
   const isActive = options.hidden ? 0 : 1;
   const rows = db
     .prepare(
@@ -129,12 +163,14 @@ export function listFunds(options: { hidden?: boolean } = {}) {
         t.required_drop_percent,
         t.status
       FROM funds f
+      JOIN user_funds uf ON uf.fund_id = f.id
       LEFT JOIN strategy_settings s ON s.fund_id = f.id
-      LEFT JOIN fund_trigger_status t ON t.fund_id = f.id
-      WHERE f.is_active = ?
+      LEFT JOIN fund_trigger_status t ON t.account_id = uf.account_id AND t.fund_id = f.id
+      WHERE uf.account_id = ?
+        AND uf.is_active = ?
       ORDER BY f.name COLLATE NOCASE`,
     )
-    .all(isActive);
+    .all(accountId, isActive);
 
-  return rows.map(mapFund);
+  return rows.map((row) => mapFund(row, accountId));
 }

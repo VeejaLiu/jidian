@@ -15,6 +15,47 @@ CREATE TABLE IF NOT EXISTS funds (
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS user_accounts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TRIGGER IF NOT EXISTS trg_user_accounts_updated_at
+AFTER UPDATE ON user_accounts
+FOR EACH ROW
+WHEN NEW.updated_at = OLD.updated_at
+BEGIN
+  UPDATE user_accounts SET updated_at = datetime('now') WHERE id = NEW.id;
+END;
+
+INSERT INTO user_accounts (name)
+SELECT '默认账户'
+WHERE NOT EXISTS (SELECT 1 FROM user_accounts);
+
+CREATE TABLE IF NOT EXISTS user_funds (
+  account_id INTEGER NOT NULL,
+  fund_id INTEGER NOT NULL,
+  is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1)),
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (account_id, fund_id),
+  FOREIGN KEY (account_id) REFERENCES user_accounts (id) ON DELETE CASCADE,
+  FOREIGN KEY (fund_id) REFERENCES funds (id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_funds_account_active
+  ON user_funds (account_id, is_active);
+
+CREATE TRIGGER IF NOT EXISTS trg_user_funds_updated_at
+AFTER UPDATE ON user_funds
+FOR EACH ROW
+WHEN NEW.updated_at = OLD.updated_at
+BEGIN
+  UPDATE user_funds SET updated_at = datetime('now') WHERE account_id = NEW.account_id AND fund_id = NEW.fund_id;
+END;
+
 CREATE INDEX IF NOT EXISTS idx_funds_name ON funds (name);
 
 CREATE TRIGGER IF NOT EXISTS trg_funds_updated_at
@@ -69,6 +110,7 @@ CREATE TABLE IF NOT EXISTS nav_sync_state (
 
 CREATE TABLE IF NOT EXISTS buy_records (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  account_id INTEGER NOT NULL DEFAULT 1,
   fund_id INTEGER NOT NULL,
   buy_date TEXT NOT NULL CHECK (date(buy_date) = buy_date),
   buy_nav REAL NOT NULL CHECK (buy_nav > 0),
@@ -76,6 +118,7 @@ CREATE TABLE IF NOT EXISTS buy_records (
   shares REAL CHECK (shares IS NULL OR shares > 0),
   note TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (account_id) REFERENCES user_accounts (id) ON DELETE CASCADE,
   FOREIGN KEY (fund_id) REFERENCES funds (id) ON DELETE CASCADE
 );
 
@@ -84,6 +127,7 @@ CREATE INDEX IF NOT EXISTS idx_buy_records_fund_date
 
 CREATE TABLE IF NOT EXISTS trade_records (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  account_id INTEGER NOT NULL DEFAULT 1,
   fund_id INTEGER NOT NULL,
   trade_type TEXT NOT NULL CHECK (trade_type IN ('buy', 'sell')),
   trade_date TEXT NOT NULL CHECK (date(trade_date) = trade_date),
@@ -95,11 +139,12 @@ CREATE TABLE IF NOT EXISTS trade_records (
   source_buy_id INTEGER,
   confirmed_at TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (account_id) REFERENCES user_accounts (id) ON DELETE CASCADE,
   FOREIGN KEY (fund_id) REFERENCES funds (id) ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_trade_records_fund_date
-  ON trade_records (fund_id, trade_date DESC, id DESC);
+  ON trade_records (account_id, fund_id, trade_date DESC, id DESC);
 
 CREATE INDEX IF NOT EXISTS idx_trade_records_source_buy
   ON trade_records (source_buy_id)
@@ -117,57 +162,3 @@ WHERE NOT EXISTS (
       OR (newer.nav_date = nh.nav_date AND newer.id > nh.id)
     )
 );
-
-CREATE VIEW IF NOT EXISTS latest_buy AS
-SELECT
-  tr.id,
-  tr.fund_id,
-  tr.trade_date AS buy_date,
-  tr.trade_nav AS buy_nav,
-  tr.amount,
-  tr.shares,
-  tr.note,
-  tr.created_at
-FROM trade_records tr
-WHERE NOT EXISTS (
-  SELECT 1
-  FROM trade_records newer
-  WHERE newer.fund_id = tr.fund_id
-    AND newer.trade_type = 'buy'
-    AND (
-      newer.trade_date > tr.trade_date
-      OR (newer.trade_date = tr.trade_date AND newer.id > tr.id)
-    )
-)
-  AND tr.trade_type = 'buy';
-
-CREATE VIEW IF NOT EXISTS fund_trigger_status AS
-SELECT
-  f.id AS fund_id,
-  f.code,
-  f.name,
-  COALESCE(ss.drop_rate, 0.04) AS drop_rate,
-  lb.buy_date AS last_buy_date,
-  lb.buy_nav AS last_buy_nav,
-  ln.nav_date AS latest_nav_date,
-  ln.unit_nav AS latest_nav,
-  ROUND(lb.buy_nav * (1 - COALESCE(ss.drop_rate, 0.04)), 6) AS trigger_nav,
-  CASE
-    WHEN lb.buy_nav IS NULL OR ln.unit_nav IS NULL THEN NULL
-    WHEN lb.buy_nav * (1 - COALESCE(ss.drop_rate, 0.04)) >= ln.unit_nav THEN 0
-    ELSE ROUND(
-      (1 - (lb.buy_nav * (1 - COALESCE(ss.drop_rate, 0.04)) / ln.unit_nav)) * 100,
-      4
-    )
-  END AS required_drop_percent,
-  CASE
-    WHEN lb.buy_nav IS NULL THEN 'missing_buy'
-    WHEN ln.unit_nav IS NULL THEN 'missing_nav'
-    WHEN lb.buy_nav * (1 - COALESCE(ss.drop_rate, 0.04)) >= ln.unit_nav THEN 'triggered'
-    ELSE 'waiting'
-  END AS status
-FROM funds f
-LEFT JOIN strategy_settings ss ON ss.fund_id = f.id
-LEFT JOIN latest_buy lb ON lb.fund_id = f.id
-LEFT JOIN latest_nav ln ON ln.fund_id = f.id
-WHERE f.is_active = 1;

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { AccountModal } from "./components/account/AccountModal";
 import { AddFundModal } from "./components/fund/AddFundModal";
 import { FundSidebar } from "./components/fund/FundSidebar";
 import { HiddenFundsModal } from "./components/fund/HiddenFundsModal";
@@ -7,7 +8,7 @@ import { EditTradeModal, type EditTradeDraft } from "./components/trade/EditTrad
 import { Workspace } from "./components/Workspace";
 import { api } from "./api/client";
 import { DEFAULT_BUSY_LABEL, MIN_NAV_MODAL_LOADING_MS } from "./constants/app";
-import type { ChartData, Fund, NavHistoryPage, TradeRecord, TradeType } from "./types/fund";
+import type { ChartData, Fund, NavHistoryPage, TradeRecord, TradeType, UserAccount } from "./types/fund";
 import { todayISO } from "./utils/date";
 import { formatMoney, formatShares, tradeTypeLabel } from "./utils/format";
 
@@ -18,10 +19,13 @@ interface BusyState {
 
 export function App() {
   const [funds, setFunds] = useState<Fund[]>([]);
+  const [accounts, setAccounts] = useState<UserAccount[]>([]);
+  const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
   const [selectedFundId, setSelectedFundId] = useState<number | null>(null);
   const [busy, setBusy] = useState<BusyState>({ active: false, label: DEFAULT_BUSY_LABEL });
   const [fundCode, setFundCode] = useState("");
   const [fundSearch, setFundSearch] = useState("");
+  const [accountModalOpen, setAccountModalOpen] = useState(false);
   const [addFundModalOpen, setAddFundModalOpen] = useState(false);
   const [addingFundBusy, setAddingFundBusy] = useState(false);
   const [hiddenFundsModalOpen, setHiddenFundsModalOpen] = useState(false);
@@ -59,6 +63,15 @@ export function App() {
     () => Boolean(selectedFund?.trades?.some((trade) => trade.status === "pending")),
     [selectedFund],
   );
+  const selectedAccount = useMemo(
+    () => accounts.find((account) => account.id === selectedAccountId) || null,
+    [accounts, selectedAccountId],
+  );
+
+  const accountQuery = useCallback(
+    () => (selectedAccountId ? `accountId=${encodeURIComponent(selectedAccountId)}` : ""),
+    [selectedAccountId],
+  );
 
   const runWithBusy = useCallback(async <T,>(label: string, action: () => Promise<T>) => {
     setBusy({ active: true, label });
@@ -72,8 +85,24 @@ export function App() {
     }
   }, []);
 
+  const loadAccounts = useCallback(async () => {
+    const payload = await api<{ accounts: UserAccount[] }>("/api/accounts");
+    const nextAccounts = payload.accounts || [];
+    setAccounts(nextAccounts);
+    setSelectedAccountId((currentId) => {
+      if (currentId && nextAccounts.some((account) => account.id === currentId)) return currentId;
+      return nextAccounts[0]?.id ?? null;
+    });
+    return nextAccounts;
+  }, []);
+
   const loadFunds = useCallback(async ({ keepSelection = true, preferredId = null }: { keepSelection?: boolean; preferredId?: number | null } = {}) => {
-    const payload = await api<{ funds: Fund[] }>("/api/funds");
+    if (!selectedAccountId) {
+      setFunds([]);
+      setSelectedFundId(null);
+      return [];
+    }
+    const payload = await api<{ funds: Fund[] }>(`/api/funds?${accountQuery()}`);
     const nextFunds = payload.funds || [];
     setFunds(nextFunds);
     setSelectedFundId((currentId) => {
@@ -82,7 +111,7 @@ export function App() {
       return nextFunds[0]?.id ?? null;
     });
     return nextFunds;
-  }, []);
+  }, [accountQuery, selectedAccountId]);
 
   const loadNavPage = useCallback(async (fundId: number, page = 1) => {
     setNavModal((current) => ({ ...current, loading: true }));
@@ -108,20 +137,26 @@ export function App() {
   }, []);
 
   const loadHiddenFunds = useCallback(async () => {
+    if (!selectedAccountId) return;
     setHiddenFundsLoading(true);
     try {
-      const payload = await api<{ funds: Fund[] }>("/api/hidden-funds");
+      const payload = await api<{ funds: Fund[] }>(`/api/hidden-funds?${accountQuery()}`);
       setHiddenFunds(payload.funds || []);
     } catch (error) {
       window.alert(error instanceof Error ? error.message : "操作失败");
     } finally {
       setHiddenFundsLoading(false);
     }
-  }, []);
+  }, [accountQuery, selectedAccountId]);
 
   useEffect(() => {
+    runWithBusy("加载中...", loadAccounts);
+  }, [loadAccounts, runWithBusy]);
+
+  useEffect(() => {
+    if (!selectedAccountId) return;
     runWithBusy("加载中...", () => loadFunds({ keepSelection: false }));
-  }, [loadFunds, runWithBusy]);
+  }, [loadFunds, runWithBusy, selectedAccountId]);
 
   useEffect(() => {
     if (!selectedFundId || !hasPendingTrades) return undefined;
@@ -149,7 +184,7 @@ export function App() {
       setChartLoading(true);
       setChartData({ nav: [], trades: [], position: null });
       try {
-        const payload = await api<ChartData>(`/api/funds/${selectedFundId}/chart`);
+        const payload = await api<ChartData>(`/api/funds/${selectedFundId}/chart?${accountQuery()}`);
         if (!cancelled) {
           setChartData({
             nav: payload.nav || [],
@@ -171,7 +206,7 @@ export function App() {
     return () => {
       cancelled = true;
     };
-  }, [selectedFundId, chartRefreshKey]);
+  }, [accountQuery, selectedFundId, chartRefreshKey]);
 
   const handleAddFund = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -183,7 +218,7 @@ export function App() {
       try {
         const payload = await api<{ fund: Fund }>("/api/funds", {
           method: "POST",
-          body: JSON.stringify({ code }),
+          body: JSON.stringify({ code, accountId: selectedAccountId }),
         });
         const fundId = payload.fund.id;
         setSelectedFundId(fundId);
@@ -200,6 +235,57 @@ export function App() {
     }
 
     addFund();
+  };
+
+  const handleCreateAccount = (name: string) => {
+    runWithBusy("创建账户中...", async () => {
+      const payload = await api<{ account: UserAccount }>("/api/accounts", {
+        method: "POST",
+        body: JSON.stringify({ name }),
+      });
+      await loadAccounts();
+      setSelectedAccountId(payload.account.id);
+      setFunds([]);
+      setSelectedFundId(null);
+      setChartRefreshKey((key) => key + 1);
+    });
+  };
+
+  const handleRenameAccount = (account: UserAccount, name: string) => {
+    runWithBusy("重命名中...", async () => {
+      await api(`/api/accounts/${account.id}`, {
+        method: "PUT",
+        body: JSON.stringify({ name }),
+      });
+      await loadAccounts();
+    });
+  };
+
+  const handleDeleteAccount = (account: UserAccount) => {
+    const confirmed = window.confirm(`确定删除「${account.name}」吗？这个账户下的基金列表和交易记录会一起删除，公共净值库不会删除。`);
+    if (!confirmed) return;
+
+    runWithBusy("删除账户中...", async () => {
+      await api(`/api/accounts/${account.id}`, { method: "DELETE" });
+      const nextAccounts = await loadAccounts();
+      if (account.id === selectedAccountId) {
+        const nextAccountId = nextAccounts.find((item) => item.id !== account.id)?.id ?? nextAccounts[0]?.id ?? null;
+        setSelectedAccountId(nextAccountId);
+        setFunds([]);
+        setSelectedFundId(null);
+        setChartRefreshKey((key) => key + 1);
+      }
+    });
+  };
+
+  const handleSelectAccount = (accountId: number) => {
+    setSelectedAccountId(accountId);
+    setFunds([]);
+    setSelectedFundId(null);
+    setFundSearch("");
+    setHiddenFunds([]);
+    setAccountModalOpen(false);
+    setChartRefreshKey((key) => key + 1);
   };
 
   const handleOpenAddFund = () => {
@@ -230,6 +316,7 @@ export function App() {
       await api(`/api/funds/${selectedFund.id}/trades`, {
         method: "POST",
         body: JSON.stringify({
+          accountId: selectedAccountId,
           type: tradeType,
           date: tradeDate,
           amount: tradeAmount,
@@ -308,7 +395,7 @@ export function App() {
     if (!confirmed) return;
 
     runWithBusy("隐藏中...", async () => {
-      await api(`/api/funds/${selectedFund.id}`, { method: "DELETE" });
+      await api(`/api/funds/${selectedFund.id}?${accountQuery()}`, { method: "DELETE" });
       await loadFunds({ keepSelection: false });
       setNavModal((current) => ({ ...current, open: false }));
       setChartRefreshKey((key) => key + 1);
@@ -317,7 +404,7 @@ export function App() {
 
   const handleRestoreFund = (fund: Fund) => {
     runWithBusy("恢复中...", async () => {
-      await api(`/api/funds/${fund.id}/restore`, { method: "POST" });
+      await api(`/api/funds/${fund.id}/restore?${accountQuery()}`, { method: "POST" });
       await loadFunds({ preferredId: fund.id });
       await loadHiddenFunds();
       setHiddenFundsModalOpen(false);
@@ -348,6 +435,7 @@ export function App() {
       <main className="app-shell">
         <FundSidebar
           funds={funds}
+          selectedAccount={selectedAccount}
           selectedFundId={selectedFundId}
           busy={busy.active}
           addingBusy={addingFundBusy}
@@ -355,6 +443,7 @@ export function App() {
           onSearchChange={setFundSearch}
           onOpenAddFund={handleOpenAddFund}
           onOpenHiddenFunds={handleOpenHiddenFunds}
+          onOpenAccountModal={() => setAccountModalOpen(true)}
           onSelectFund={setSelectedFundId}
         />
         <Workspace
@@ -378,6 +467,17 @@ export function App() {
           onDeleteTrade={handleDeleteTrade}
         />
       </main>
+      <AccountModal
+        open={accountModalOpen}
+        accounts={accounts}
+        selectedAccount={selectedAccount}
+        busy={busy.active}
+        onClose={() => setAccountModalOpen(false)}
+        onSelectAccount={handleSelectAccount}
+        onCreateAccount={handleCreateAccount}
+        onRenameAccount={handleRenameAccount}
+        onDeleteAccount={handleDeleteAccount}
+      />
       <NavHistoryModal
         fund={selectedFund}
         modal={navModal}

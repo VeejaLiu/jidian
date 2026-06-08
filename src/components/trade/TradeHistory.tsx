@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DataTable } from "../DataTable";
 import { TradeActionMenu } from "./TradeActionMenu";
 import type { Fund, TradeRecord } from "../../types/fund";
@@ -14,6 +14,7 @@ export function TradeHistory({ fund, onEditTrade, onDeleteTrade }: TradeHistoryP
   const [page, setPage] = useState(1);
   const trades = fund.trades || fund.buys || [];
   const latestTrade = trades[0];
+  const buyDropMap = useMemo(() => buildBuyDropMap(trades), [trades]);
   const pageSize = 5;
   const totalPages = Math.max(1, Math.ceil(trades.length / pageSize));
   const safePage = Math.min(page, totalPages);
@@ -43,6 +44,7 @@ export function TradeHistory({ fund, onEditTrade, onDeleteTrade }: TradeHistoryP
               <th>状态</th>
               <th>日期</th>
               <th>净值</th>
+              <th>较上次买入</th>
               <th>金额</th>
               <th>份额</th>
               <th>备注</th>
@@ -70,6 +72,10 @@ export function TradeHistory({ fund, onEditTrade, onDeleteTrade }: TradeHistoryP
               },
               { key: "date", render: (record) => record.date },
               { key: "nav", render: (record) => (record.status === "pending" ? "待公布" : formatNav(record.nav)) },
+              {
+                key: "buyDrop",
+                render: (record) => <BuyDropCell record={record} drop={buyDropMap.get(record.id)} />,
+              },
               { key: "amount", render: (record) => formatMoney(record.amount) },
               { key: "shares", render: (record) => (record.status === "pending" ? "待确认" : formatShares(record.shares)) },
               { key: "note", render: (record) => record.note || "" },
@@ -98,5 +104,47 @@ export function TradeHistory({ fund, onEditTrade, onDeleteTrade }: TradeHistoryP
         )}
       </div>
     </div>
+  );
+}
+
+type BuyDropInfo =
+  | { kind: "first" }
+  | { kind: "drop"; percent: number };
+
+function buildBuyDropMap(trades: TradeRecord[]) {
+  const confirmedBuys = trades
+    .filter((trade) => trade.type === "buy" && trade.status !== "pending" && Number(trade.nav) > 0)
+    .sort((left, right) => {
+      if (left.date === right.date) return left.id - right.id;
+      return left.date.localeCompare(right.date);
+    });
+  const map = new Map<number, BuyDropInfo>();
+
+  confirmedBuys.forEach((trade, index) => {
+    if (index === 0) {
+      map.set(trade.id, { kind: "first" });
+      return;
+    }
+
+    const previousNav = Number(confirmedBuys[index - 1].nav);
+    const currentNav = Number(trade.nav);
+    if (!Number.isFinite(previousNav) || previousNav <= 0 || !Number.isFinite(currentNav)) return;
+    map.set(trade.id, { kind: "drop", percent: ((previousNav - currentNav) / previousNav) * 100 });
+  });
+
+  return map;
+}
+
+function BuyDropCell({ record, drop }: { record: TradeRecord; drop?: BuyDropInfo }) {
+  if (record.type !== "buy") return <span className="muted-cell">--</span>;
+  if (record.status === "pending") return <span className="muted-cell">待确认</span>;
+  if (!drop) return <span className="muted-cell">--</span>;
+  if (drop.kind === "first") return <span className="buy-drop-tag first">首次买入</span>;
+
+  const isDrop = drop.percent >= 0;
+  return (
+    <span className={`buy-drop-tag ${isDrop ? "drop" : "rise"}`}>
+      {isDrop ? "下跌" : "上涨"} {Math.abs(drop.percent).toFixed(2)}%
+    </span>
   );
 }

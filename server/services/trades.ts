@@ -3,7 +3,7 @@ import type { TradeRecord } from "../types";
 import { toHttpError } from "../utils/httpError";
 import { assertDate, assertPositiveNumber, cleanText, optionalPositiveNumber } from "../utils/validators";
 
-export function listTrades(fundId: number, order: "ASC" | "DESC" = "DESC") {
+export function listTrades(fundId: number, accountId: number, order: "ASC" | "DESC" = "DESC") {
   const direction = order === "ASC" ? "ASC" : "DESC";
   return db
     .prepare(
@@ -18,9 +18,10 @@ export function listTrades(fundId: number, order: "ASC" | "DESC" = "DESC") {
         note
        FROM trade_records
        WHERE fund_id = ?
+         AND account_id = ?
        ORDER BY trade_date ${direction}, id ${direction}`,
     )
-    .all(fundId) as TradeRecord[];
+    .all(fundId, accountId) as TradeRecord[];
 }
 
 export function calculatePositionFromTrades(trades: TradeRecord[]) {
@@ -94,8 +95,8 @@ function sortTradesByTimeline(trades: TradeRecord[]) {
   });
 }
 
-export function getPosition(fundId: number) {
-  return calculatePositionFromTrades(listTrades(fundId, "ASC"));
+export function getPosition(fundId: number, accountId: number) {
+  return calculatePositionFromTrades(listTrades(fundId, accountId, "ASC"));
 }
 
 export function buildTradeInput(fundId: number, body: any, forcedType: "buy" | "sell" | null = null): TradeRecord {
@@ -132,9 +133,9 @@ export function buildTradeInput(fundId: number, body: any, forcedType: "buy" | "
   };
 }
 
-export function assertTradeTimeline(fundId: number, candidateTrade: TradeRecord, ignoredTradeId: number | null = null) {
+export function assertTradeTimeline(fundId: number, accountId: number, candidateTrade: TradeRecord, ignoredTradeId: number | null = null) {
   if (candidateTrade.status === "pending") return;
-  const existingTrades = listTrades(fundId, "ASC").filter((trade) => trade.id !== ignoredTradeId);
+  const existingTrades = listTrades(fundId, accountId, "ASC").filter((trade) => trade.id !== ignoredTradeId);
   const candidateTrades = sortTradesByTimeline([...existingTrades, candidateTrade]);
   const negativeDate = findNegativePositionDate(candidateTrades);
   if (negativeDate) {

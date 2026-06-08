@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { DataTable } from "../DataTable";
-import type { Fund, NavHistoryPage } from "../../types/fund";
-import { formatNav } from "../../utils/format";
+import type { Fund, NavHistoryPage, NavPoint } from "../../types/fund";
+import { formatNav, formatSignedPercent } from "../../utils/format";
 
 export interface NavModalState extends NavHistoryPage {
   open: boolean;
@@ -52,6 +52,7 @@ export function NavHistoryModal({ fund, modal, busy, onClose, onPrev, onNext }: 
               <tr>
                 <th>日期</th>
                 <th>单位净值</th>
+                <th>较前日</th>
                 <th>累计净值</th>
               </tr>
             </thead>
@@ -60,6 +61,7 @@ export function NavHistoryModal({ fund, modal, busy, onClose, onPrev, onNext }: 
               columns={[
                 { key: "date", render: (record) => record.date },
                 { key: "nav", render: (record) => formatNav(record.nav) },
+                { key: "dailyChange", render: (record) => <DailyChangeTag point={record} /> },
                 { key: "accumulatedNav", render: (record) => formatNav(record.accumulatedNav) },
               ]}
               emptyText={modal.loading ? "" : "暂无记录"}
@@ -88,5 +90,19 @@ export function NavHistoryModal({ fund, modal, busy, onClose, onPrev, onNext }: 
         </div>
       </div>
     </div>
+  );
+}
+
+function DailyChangeTag({ point }: { point: NavPoint }) {
+  const value = Number(point.dailyChangePercent);
+  if (!Number.isFinite(value)) return <span className="muted-cell">--</span>;
+
+  const direction = Math.abs(value) < 0.005 ? "flat" : value > 0 ? "up" : "down";
+  const label = direction === "flat" ? "持平" : direction === "up" ? "上涨" : "下跌";
+
+  return (
+    <span className={`daily-change-tag ${direction}`}>
+      {label} {formatSignedPercent(value)}
+    </span>
   );
 }

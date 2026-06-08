@@ -35,7 +35,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -154,7 +155,8 @@ label span {
   color: #bdd0d6;
 }
 
-input {
+input,
+select {
   width: 100%;
   min-height: 42px;
   border: 1px solid var(--line);
@@ -168,6 +170,69 @@ input {
 input:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px rgba(25, 123, 117, 0.15);
+}
+
+select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(25, 123, 117, 0.15);
+}
+
+.account-entry {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 62px;
+  margin-top: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.07);
+  color: #ffffff;
+  text-align: left;
+}
+
+.account-entry:hover {
+  border-color: rgba(137, 210, 205, 0.38);
+  background: rgba(255, 255, 255, 0.11);
+}
+
+.account-entry-avatar,
+.account-avatar {
+  display: inline-grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  background: #89d2cd;
+  color: #12333a;
+  font-weight: 900;
+}
+
+.account-entry span:nth-child(2) {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.account-entry small {
+  color: #bdd0d6;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.account-entry strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.98rem;
+}
+
+.account-entry-action {
+  color: #89d2cd;
+  font-size: 0.82rem;
+  font-weight: 900;
 }
 
 .add-fund button,
@@ -531,6 +596,225 @@ button:disabled {
   height: 360px;
 }
 
+.chart-tooltip {
+  width: 296px;
+  max-width: min(296px, calc(100vw - 32px));
+  border: 1px solid rgba(214, 224, 229, 0.96);
+  border-radius: 10px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 18px 46px rgba(21, 31, 38, 0.18);
+  color: var(--ink);
+  line-height: 1.35;
+  backdrop-filter: blur(10px);
+}
+
+.chart-tooltip-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 10px;
+}
+
+.chart-tooltip-header div {
+  display: grid;
+  gap: 2px;
+}
+
+.chart-tooltip-header span:not(.chart-tooltip-header-mark),
+.chart-tooltip-row span {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.chart-tooltip-header strong {
+  font-size: 0.98rem;
+  letter-spacing: 0;
+}
+
+.chart-tooltip-header-mark {
+  width: 34px;
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #197b75, #b4532a, #2563eb);
+}
+
+.chart-tooltip-section {
+  display: grid;
+  gap: 8px;
+}
+
+.chart-tooltip-section + .chart-tooltip-section {
+  margin-top: 8px;
+}
+
+.chart-tooltip-section-panel {
+  border-radius: 8px;
+  padding: 10px;
+  background: #f7faf9;
+  border: 1px solid #edf3f2;
+}
+
+.chart-tooltip-divider {
+  height: 1px;
+  margin: 10px 0;
+  background: var(--line);
+}
+
+.chart-tooltip-section-title,
+.chart-tooltip-trade-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 20px;
+  color: var(--ink);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.chart-tooltip-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--muted);
+}
+
+.chart-tooltip-dot.primary {
+  background: #197b75;
+}
+
+.chart-tooltip-dot.buy {
+  background: #b4532a;
+}
+
+.chart-tooltip-dot.sell {
+  background: #2563eb;
+}
+
+.chart-tooltip-line-sample {
+  width: 20px;
+  height: 0;
+  border-top: 2px dashed #7c3aed;
+}
+
+.chart-tooltip-kpi {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.chart-tooltip-kpi span {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.chart-tooltip-kpi strong {
+  color: var(--primary-dark);
+  font-size: 1.22rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.chart-tooltip-row {
+  display: grid;
+  grid-template-columns: minmax(72px, auto) minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+}
+
+.chart-tooltip-row strong {
+  justify-self: end;
+  color: var(--ink);
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.chart-tooltip-row strong.primary {
+  color: var(--primary-dark);
+  font-size: 1.02rem;
+}
+
+.chart-tooltip-row strong.up {
+  color: #047857;
+}
+
+.chart-tooltip-row strong.down {
+  color: var(--danger);
+}
+
+.chart-tooltip-row strong.flat,
+.chart-tooltip-row strong.muted {
+  color: var(--muted);
+}
+
+.chart-tooltip-row strong.buy {
+  color: #a4441d;
+}
+
+.chart-tooltip-row strong.sell {
+  color: #1d4ed8;
+}
+
+.chart-tooltip-row strong.cost {
+  color: #7c3aed;
+}
+
+.chart-tooltip-trades {
+  display: grid;
+  gap: 8px;
+}
+
+.chart-tooltip-trade-card {
+  border-radius: 8px;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+}
+
+.chart-tooltip-trade-card.buy {
+  background: #fff1ea;
+  border-color: #fed7c2;
+}
+
+.chart-tooltip-trade-card.sell {
+  background: #eff6ff;
+  border-color: #cfe2ff;
+}
+
+.chart-tooltip-trade-card.buy .chart-tooltip-trade-title strong {
+  color: #a4441d;
+}
+
+.chart-tooltip-trade-card.sell .chart-tooltip-trade-title strong {
+  color: #1d4ed8;
+}
+
+.chart-tooltip-note {
+  display: grid;
+  gap: 4px;
+  margin-top: 2px;
+  border-radius: 8px;
+  padding: 7px 8px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.chart-tooltip-note span {
+  color: var(--ink);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.chart-tooltip-note p {
+  margin: 0;
+}
+
 .chart-loading,
 .chart-empty {
   position: absolute;
@@ -830,6 +1114,61 @@ tr:last-child td {
   color: #c2410c;
 }
 
+.buy-drop-tag {
+  display: inline-grid;
+  place-items: center;
+  min-height: 24px;
+  border-radius: 999px;
+  padding: 0 8px;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.buy-drop-tag.first {
+  background: #f5f7f8;
+  color: #52636a;
+}
+
+.buy-drop-tag.drop {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.buy-drop-tag.rise {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.daily-change-tag {
+  display: inline-grid;
+  place-items: center;
+  min-width: 74px;
+  min-height: 24px;
+  border-radius: 999px;
+  padding: 0 8px;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.daily-change-tag.up {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.daily-change-tag.down {
+  background: #fff2f0;
+  color: #b42318;
+}
+
+.daily-change-tag.flat {
+  background: #f5f7f8;
+  color: #52636a;
+}
+
+.muted-cell {
+  color: var(--muted);
+}
+
 .empty-row {
   color: var(--muted);
 }
@@ -906,6 +1245,117 @@ tr:last-child td {
 
 .trade-edit-modal {
   width: min(520px, 100%);
+}
+
+.account-modal {
+  width: min(640px, 100%);
+}
+
+.account-modal-list {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  max-height: min(360px, 48vh);
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.account-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  background: #ffffff;
+}
+
+.account-card.active {
+  border-color: rgba(25, 123, 117, 0.42);
+  background: #f2fbfa;
+}
+
+.account-card-main {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+}
+
+.account-card-main span:last-child {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.account-card-main strong,
+.account-card-main small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-card-main small {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.account-card-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.account-card-actions button {
+  min-height: 32px;
+  border-radius: 8px;
+  padding: 0 10px;
+  background: var(--surface-strong);
+  color: var(--ink);
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.account-card-actions button:hover {
+  background: #e0ebee;
+}
+
+.account-card-actions button.danger {
+  background: #fff2f0;
+  color: var(--danger);
+}
+
+.account-card-actions button.danger:hover {
+  background: #ffe4e0;
+}
+
+.account-edit-form {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.account-edit-form input {
+  min-height: 36px;
+}
+
+.account-edit-form .secondary-button {
+  min-height: 36px;
+}
+
+.account-create-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
 }
 
 .hidden-funds-modal {
@@ -1053,5 +1503,15 @@ tr:last-child td {
   .modal-panel {
     max-height: calc(100vh - 24px);
     padding: 14px;
+  }
+
+  .account-card,
+  .account-edit-form,
+  .account-create-form {
+    grid-template-columns: 1fr;
+  }
+
+  .account-card-actions {
+    justify-content: flex-start;
   }
 }

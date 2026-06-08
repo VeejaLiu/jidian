@@ -42,7 +42,10 @@ export function NavChart({ fund, data, loading, busy, onViewAllNav }: NavChartPr
     const chart = instanceRef.current;
     if (!chart) return;
 
-    const navPoints = filteredData.nav.map((item) => [item.date, Number(item.nav)]);
+    const navPoints = filteredData.nav.map((item) => ({
+      value: [item.date, Number(item.nav)],
+      dailyChangePercent: item.dailyChangePercent,
+    }));
     const confirmedTrades = filteredData.trades.filter((item) => item.status !== "pending" && item.nav);
     const buyPoints = confirmedTrades.filter((item) => item.type === "buy").map((item) => ({
       value: [item.date, Number(item.nav)],
@@ -72,24 +75,13 @@ export function NavChart({ fund, data, loading, busy, onViewAllNav }: NavChartPr
         tooltip: {
           trigger: "axis",
           axisPointer: { type: "cross" },
+          className: "chart-tooltip-shell",
+          backgroundColor: "transparent",
+          borderWidth: 0,
+          padding: 0,
+          extraCssText: "box-shadow:none;",
           formatter(params: any[]) {
-            const rows = params.map((param) => {
-              if (param.seriesName === "买入点") {
-                const point = param.data || {};
-                const note = point.note ? `<br/>备注：${point.note}` : "";
-                return `${param.marker}买入：${formatNav(param.value[1])}<br/>金额：${formatMoney(point.amount)}　份额：${formatShares(point.shares)}${note}`;
-              }
-              if (param.seriesName === "卖出点") {
-                const point = param.data || {};
-                const note = point.note ? `<br/>备注：${point.note}` : "";
-                return `${param.marker}卖出：${formatNav(param.value[1])}<br/>金额：${formatMoney(point.amount)}　份额：${formatShares(point.shares)}${note}`;
-              }
-              if (param.seriesName === "成本价") {
-                return `${param.marker}成本价：${formatNav(param.value[1])}`;
-              }
-              return `${param.marker}单位净值：${formatNav(param.value[1])}`;
-            });
-            return `${formatChartDate(params[0]?.axisValue)}<br/>${rows.join("<br/>")}`;
+            return renderChartTooltip(params);
           },
         },
         xAxis: {
@@ -197,4 +189,113 @@ export function NavChart({ fund, data, loading, busy, onViewAllNav }: NavChartPr
       </div>
     </section>
   );
+}
+
+function renderChartTooltip(params: any[]) {
+  const navParam = params.find((param) => param.seriesName === "单位净值");
+  const tradeParams = params.filter((param) => param.seriesName === "买入点" || param.seriesName === "卖出点");
+  const costParam = params.find((param) => param.seriesName === "成本价");
+  const date = formatChartDate(params[0]?.axisValue);
+
+  return `
+    <div class="chart-tooltip">
+      <div class="chart-tooltip-header">
+        <div>
+          <span>净值日期</span>
+          <strong>${escapeHtml(date)}</strong>
+        </div>
+        <span class="chart-tooltip-header-mark" aria-hidden="true"></span>
+      </div>
+      ${navParam ? renderNavTooltipSection(navParam) : ""}
+      ${costParam ? `<div class="chart-tooltip-divider"></div>${renderCostTooltipSection(costParam)}` : ""}
+      ${tradeParams.length ? `<div class="chart-tooltip-divider"></div><div class="chart-tooltip-trades">${tradeParams.map(renderTradeTooltipSection).join("")}</div>` : ""}
+    </div>
+  `;
+}
+
+function renderNavTooltipSection(param: any) {
+  const point = param.data || {};
+  const change = getDailyChange(point.dailyChangePercent);
+  return `
+    <div class="chart-tooltip-section chart-tooltip-section-panel">
+      <div class="chart-tooltip-section-title">
+        <span class="chart-tooltip-dot primary"></span>
+        <span>净值表现</span>
+      </div>
+      <div class="chart-tooltip-kpi">
+        <span>单位净值</span>
+        <strong>${escapeHtml(formatNav(param.value?.[1]))}</strong>
+      </div>
+      <div class="chart-tooltip-row">
+        <span>较前日</span>
+        ${
+          change
+            ? `<strong class="${change.direction}">${escapeHtml(change.label)} ${escapeHtml(change.percent)}</strong>`
+            : '<strong class="muted">--</strong>'
+        }
+      </div>
+    </div>
+  `;
+}
+
+function renderCostTooltipSection(param: any) {
+  return `
+    <div class="chart-tooltip-section">
+      <div class="chart-tooltip-section-title">
+        <span class="chart-tooltip-line-sample"></span>
+        <span>持仓参考</span>
+      </div>
+      ${renderMetricRow("成本价", formatNav(param.value?.[1]), "cost")}
+    </div>
+  `;
+}
+
+function renderTradeTooltipSection(param: any) {
+  const point = param.data || {};
+  const isBuy = param.seriesName === "买入点";
+  const label = isBuy ? "买入" : "卖出";
+  const tone = isBuy ? "buy" : "sell";
+  const note = point.note ? `<div class="chart-tooltip-note"><span>备注</span><p>${escapeHtml(point.note)}</p></div>` : "";
+
+  return `
+    <div class="chart-tooltip-section chart-tooltip-trade-card ${tone}">
+      <div class="chart-tooltip-trade-title">
+        <span class="chart-tooltip-dot ${tone}"></span>
+        <strong>${label}记录</strong>
+      </div>
+      ${renderMetricRow("净值", formatNav(param.value?.[1]), tone)}
+      ${renderMetricRow("金额", formatMoney(point.amount), "muted")}
+      ${renderMetricRow("份额", formatShares(point.shares), "muted")}
+      ${note}
+    </div>
+  `;
+}
+
+function renderMetricRow(label: string, value: string, tone: string) {
+  return `
+    <div class="chart-tooltip-row">
+      <span>${escapeHtml(label)}</span>
+      <strong class="${tone}">${escapeHtml(value)}</strong>
+    </div>
+  `;
+}
+
+function getDailyChange(value: unknown) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return null;
+  if (Math.abs(number) < 0.005) return { direction: "flat", label: "持平", percent: "0.00%" };
+  return {
+    direction: number > 0 ? "up" : "down",
+    label: number > 0 ? "上涨" : "下跌",
+    percent: `${Math.abs(number).toFixed(2)}%`,
+  };
+}
+
+function escapeHtml(value: unknown) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }

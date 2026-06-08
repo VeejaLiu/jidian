@@ -1,10 +1,17 @@
 export type TradeType = "buy" | "sell";
 
+export interface UserAccount {
+  id: number;
+  name: string;
+}
+
 export interface NavPoint {
   id?: number;
   date: string;
   nav: number;
   accumulatedNav?: number | null;
+  previousNav?: number | null;
+  dailyChangePercent?: number | null;
 }
 
 export interface TradeRecord {

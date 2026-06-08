@@ -10,6 +10,35 @@ const navSyncTouchedAt = new Map<number, number>();
 const NAV_SYNC_INTERVAL_MS = 6 * 60 * 60 * 1000;
 const PENDING_TRADE_SYNC_INTERVAL_MS = 5 * 60 * 1000;
 
+type SyncSource = "background" | "manual" | "add-fund" | "system";
+type SyncOptions = {
+  startDate?: string;
+  endDate?: string;
+  fullHistory?: boolean;
+  source?: SyncSource;
+};
+
+function logNavSync(message: string, details: Record<string, unknown> = {}) {
+  const extra = Object.entries(details)
+    .filter(([, value]) => value !== undefined && value !== null && value !== "")
+    .map(([key, value]) => `${key}=${value}`)
+    .join(" ");
+  console.info(`[nav-sync] ${new Date().toISOString()} ${message}${extra ? ` ${extra}` : ""}`);
+}
+
+function formatLocalTime(timestamp: number | null) {
+  if (!timestamp) return "现在";
+  return new Date(timestamp).toLocaleString("zh-CN", { hour12: false });
+}
+
+function formatDuration(ms: number) {
+  const minutes = Math.ceil(ms / 60000);
+  if (minutes < 60) return `${minutes}分钟`;
+  const hours = Math.floor(minutes / 60);
+  const restMinutes = minutes % 60;
+  return restMinutes ? `${hours}小时${restMinutes}分钟` : `${hours}小时`;
+}
+
 function getDefaultSyncStartDate(fundId: number) {
   const syncState = db
     .prepare("SELECT full_history_synced FROM nav_sync_state WHERE fund_id = ?")
@@ -27,13 +56,49 @@ function getDefaultSyncStartDate(fundId: number) {
   return "";
 }
 
-function shouldSkipSync(fundId: number) {
+function getSyncDecision(fundId: number) {
   const lastTouchedAt = navSyncTouchedAt.get(fundId) || 0;
   const pendingTrade = db
     .prepare("SELECT 1 FROM trade_records WHERE fund_id = ? AND status = 'pending' LIMIT 1")
     .get(fundId);
   const interval = pendingTrade ? PENDING_TRADE_SYNC_INTERVAL_MS : NAV_SYNC_INTERVAL_MS;
-  return Date.now() - lastTouchedAt < interval || navSyncJobs.has(fundId);
+  const nextSyncAt = lastTouchedAt ? lastTouchedAt + interval : null;
+  const remainingMs = nextSyncAt ? Math.max(0, nextSyncAt - Date.now()) : 0;
+  const isRunning = navSyncJobs.has(fundId);
+
+  if (isRunning) {
+    return {
+      skip: true,
+      reason: "syncing",
+      hasPendingTrade: Boolean(pendingTrade),
+      interval,
+      lastTouchedAt,
+      nextSyncAt,
+      remainingMs,
+    };
+  }
+
+  if (remainingMs > 0) {
+    return {
+      skip: true,
+      reason: "throttled",
+      hasPendingTrade: Boolean(pendingTrade),
+      interval,
+      lastTouchedAt,
+      nextSyncAt,
+      remainingMs,
+    };
+  }
+
+  return {
+    skip: false,
+    reason: "ready",
+    hasPendingTrade: Boolean(pendingTrade),
+    interval,
+    lastTouchedAt,
+    nextSyncAt,
+    remainingMs,
+  };
 }
 
 const upsertNav = db.prepare(
@@ -66,11 +131,12 @@ function confirmPendingTrades(fundId: number) {
   const pendingTrades = db
     .prepare(
       `SELECT id, trade_type AS type, trade_date AS date, amount
+       , account_id AS accountId
        FROM trade_records
        WHERE fund_id = ?
          AND status = 'pending'`,
     )
-    .all(fundId) as Array<{ id: number; type: "buy" | "sell"; date: string; amount: number }>;
+    .all(fundId) as Array<{ id: number; accountId: number; type: "buy" | "sell"; date: string; amount: number }>;
 
   const navForDate = db.prepare(
     "SELECT unit_nav FROM nav_history WHERE fund_id = ? AND nav_date = ?",
@@ -95,6 +161,7 @@ function confirmPendingTrades(fundId: number) {
     try {
       assertTradeTimeline(
         fundId,
+        trade.accountId,
         {
           id: trade.id,
           type: trade.type,
@@ -118,8 +185,12 @@ function confirmPendingTrades(fundId: number) {
   return confirmed;
 }
 
-export async function syncFundNav(fundId: number, options: { startDate?: string; endDate?: string; fullHistory?: boolean } = {}) {
-  if (navSyncJobs.has(fundId)) return { imported: 0, skipped: true, reason: "syncing" };
+export async function syncFundNav(fundId: number, options: SyncOptions = {}) {
+  const source = options.source || "system";
+  if (navSyncJobs.has(fundId)) {
+    logNavSync("跳过净值同步：已有任务运行中", { fundId, source });
+    return { imported: 0, skipped: true, reason: "syncing" };
+  }
 
   const fund = getFundById(fundId);
   if (!fund) throw toHttpError("基金不存在", 404);
@@ -129,10 +200,32 @@ export async function syncFundNav(fundId: number, options: { startDate?: string;
   const endDate = options.endDate || "";
   if (startDate > todayISO()) {
     navSyncTouchedAt.set(fundId, Date.now());
+    const decision = getSyncDecision(fundId);
+    logNavSync("跳过净值同步：已是最新", {
+      fundId,
+      code: fund.code,
+      name: fund.name,
+      source,
+      startDate,
+      nextSyncAt: formatLocalTime(decision.nextSyncAt),
+      interval: formatDuration(decision.interval),
+    });
     return { imported: 0, startDate, endDate: endDate || null, skipped: true, reason: "up-to-date" };
   }
 
   navSyncJobs.add(fundId);
+  const mode = startDate ? "incremental" : "full";
+  const startedAt = Date.now();
+  logNavSync("开始净值同步", {
+    fundId,
+    code: fund.code,
+    name: fund.name,
+    source,
+    mode,
+    startDate: startDate || "成立以来",
+    endDate: endDate || "最新",
+  });
+
   try {
     const result = await fetchNavHistory(fund.code, startDate, endDate);
     const transaction = db.transaction((rows: typeof result.rows) => {
@@ -154,10 +247,26 @@ export async function syncFundNav(fundId: number, options: { startDate?: string;
       fullHistorySyncedAt: startDate ? null : new Date().toISOString(),
       lastIncrementalSyncAt: new Date().toISOString(),
     });
+    const decision = getSyncDecision(fundId);
+
+    logNavSync("完成净值同步", {
+      fundId,
+      code: fund.code,
+      name: fund.name,
+      source,
+      mode,
+      imported: result.rows.length,
+      sourceRecords: result.sourceRecords,
+      fetchedPages: result.fetchedPages,
+      confirmedTrades,
+      durationMs: Date.now() - startedAt,
+      nextSyncAt: formatLocalTime(decision.nextSyncAt),
+      interval: formatDuration(decision.interval),
+    });
 
     return {
       imported: result.rows.length,
-      mode: startDate ? "incremental" : "full",
+      mode,
       startDate,
       endDate: endDate || null,
       sourceRecords: result.sourceRecords,
@@ -165,6 +274,17 @@ export async function syncFundNav(fundId: number, options: { startDate?: string;
       fetchedPages: result.fetchedPages,
       confirmedTrades,
     };
+  } catch (error) {
+    logNavSync("净值同步失败", {
+      fundId,
+      code: fund.code,
+      name: fund.name,
+      source,
+      mode,
+      durationMs: Date.now() - startedAt,
+      error: (error as Error).message,
+    });
+    throw error;
   } finally {
     navSyncJobs.delete(fundId);
   }
@@ -172,12 +292,43 @@ export async function syncFundNav(fundId: number, options: { startDate?: string;
 
 export function syncActiveFundsInBackground() {
   const funds = db
-    .prepare("SELECT id FROM funds WHERE is_active = 1 AND code IS NOT NULL AND code != ''")
-    .all() as Array<{ id: number }>;
+    .prepare(
+      `SELECT DISTINCT f.id, f.code, f.name
+       FROM funds f
+       JOIN user_funds uf ON uf.fund_id = f.id
+       WHERE uf.is_active = 1
+         AND f.code IS NOT NULL
+         AND f.code != ''`,
+    )
+    .all() as Array<{ id: number; code: string; name: string }>;
+
+  logNavSync("触发静默净值检查", { activeFunds: funds.length });
 
   funds.forEach((fund) => {
-    if (shouldSkipSync(fund.id)) return;
-    syncFundNav(fund.id).catch((error) => {
+    const decision = getSyncDecision(fund.id);
+    if (decision.skip) {
+      logNavSync("跳过静默净值同步", {
+        fundId: fund.id,
+        code: fund.code,
+        name: fund.name,
+        reason: decision.reason,
+        pendingTrade: decision.hasPendingTrade ? "yes" : "no",
+        nextSyncAt: formatLocalTime(decision.nextSyncAt),
+        remaining: decision.remainingMs > 0 ? formatDuration(decision.remainingMs) : null,
+        interval: formatDuration(decision.interval),
+      });
+      return;
+    }
+
+    logNavSync("排队静默净值同步", {
+      fundId: fund.id,
+      code: fund.code,
+      name: fund.name,
+      pendingTrade: decision.hasPendingTrade ? "yes" : "no",
+      interval: formatDuration(decision.interval),
+    });
+
+    syncFundNav(fund.id, { source: "background" }).catch((error) => {
       console.warn(`静默同步净值失败 fund_id=${fund.id}: ${error.message}`);
     });
   });

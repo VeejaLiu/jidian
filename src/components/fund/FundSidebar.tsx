@@ -1,9 +1,10 @@
 import { useMemo } from "react";
-import type { Fund } from "../../types/fund";
+import type { Fund, UserAccount } from "../../types/fund";
 import { fundMatchesSearch } from "../../utils/search";
 
 interface FundSidebarProps {
   funds: Fund[];
+  selectedAccount: UserAccount | null;
   selectedFundId: number | null;
   busy: boolean;
   addingBusy: boolean;
@@ -11,11 +12,13 @@ interface FundSidebarProps {
   onSearchChange: (value: string) => void;
   onOpenAddFund: () => void;
   onOpenHiddenFunds: () => void;
+  onOpenAccountModal: () => void;
   onSelectFund: (fundId: number) => void;
 }
 
 export function FundSidebar({
   funds,
+  selectedAccount,
   selectedFundId,
   busy,
   addingBusy,
@@ -23,6 +26,7 @@ export function FundSidebar({
   onSearchChange,
   onOpenAddFund,
   onOpenHiddenFunds,
+  onOpenAccountModal,
   onSelectFund,
 }: FundSidebarProps) {
   const visibleFunds = useMemo(
@@ -42,6 +46,15 @@ export function FundSidebar({
             隐藏列表
           </button>
         </div>
+
+        <button className="account-entry" type="button" disabled={busy} onClick={onOpenAccountModal}>
+          <span className="account-entry-avatar">{selectedAccount?.name.slice(0, 1) || "账"}</span>
+          <span>
+            <small>当前账户</small>
+            <strong>{selectedAccount?.name || "选择账户"}</strong>
+          </span>
+          <span className="account-entry-action">管理</span>
+        </button>
 
         <label className="fund-search">
           <span>搜索</span>
