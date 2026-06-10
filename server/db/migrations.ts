@@ -64,6 +64,7 @@ export function migrateAccounts() {
       account_id INTEGER NOT NULL,
       fund_id INTEGER NOT NULL,
       is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1)),
+      drop_rate REAL NOT NULL DEFAULT 0.04 CHECK (drop_rate > 0 AND drop_rate < 1),
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now')),
       PRIMARY KEY (account_id, fund_id),
@@ -87,6 +88,18 @@ export function migrateAccounts() {
   const hadUserFundsBeforeMigration = (db
     .prepare("SELECT COUNT(*) AS total FROM user_funds")
     .get() as { total: number }).total > 0;
+
+  const userFundColumns = columnNames("user_funds");
+  if (!userFundColumns.includes("drop_rate")) {
+    db.exec("ALTER TABLE user_funds ADD COLUMN drop_rate REAL NOT NULL DEFAULT 0.04 CHECK (drop_rate > 0 AND drop_rate < 1);");
+    db.exec(`
+      UPDATE user_funds
+      SET drop_rate = COALESCE(
+        (SELECT drop_rate FROM strategy_settings WHERE strategy_settings.fund_id = user_funds.fund_id),
+        0.04
+      )
+    `);
+  }
 
   const tradeColumns = tableExists("trade_records") ? columnNames("trade_records") : [];
   if (tradeColumns.length && !tradeColumns.includes("account_id")) {
@@ -339,24 +352,24 @@ export function migrateTradeRecordsForPendingStatus() {
       f.id AS fund_id,
       f.code,
       f.name,
-      COALESCE(ss.drop_rate, 0.04) AS drop_rate,
+      COALESCE(uf.drop_rate, ss.drop_rate, 0.04) AS drop_rate,
       lb.buy_date AS last_buy_date,
       lb.buy_nav AS last_buy_nav,
       ln.nav_date AS latest_nav_date,
       ln.unit_nav AS latest_nav,
-      ROUND(lb.buy_nav * (1 - COALESCE(ss.drop_rate, 0.04)), 6) AS trigger_nav,
+      ROUND(lb.buy_nav * (1 - COALESCE(uf.drop_rate, ss.drop_rate, 0.04)), 6) AS trigger_nav,
       CASE
         WHEN lb.buy_nav IS NULL OR ln.unit_nav IS NULL THEN NULL
-        WHEN lb.buy_nav * (1 - COALESCE(ss.drop_rate, 0.04)) >= ln.unit_nav THEN 0
+        WHEN lb.buy_nav * (1 - COALESCE(uf.drop_rate, ss.drop_rate, 0.04)) >= ln.unit_nav THEN 0
         ELSE ROUND(
-          (1 - (lb.buy_nav * (1 - COALESCE(ss.drop_rate, 0.04)) / ln.unit_nav)) * 100,
+          (1 - (lb.buy_nav * (1 - COALESCE(uf.drop_rate, ss.drop_rate, 0.04)) / ln.unit_nav)) * 100,
           4
         )
       END AS required_drop_percent,
       CASE
         WHEN lb.buy_nav IS NULL THEN 'missing_buy'
         WHEN ln.unit_nav IS NULL THEN 'missing_nav'
-        WHEN lb.buy_nav * (1 - COALESCE(ss.drop_rate, 0.04)) >= ln.unit_nav THEN 'triggered'
+        WHEN lb.buy_nav * (1 - COALESCE(uf.drop_rate, ss.drop_rate, 0.04)) >= ln.unit_nav THEN 'triggered'
         ELSE 'waiting'
       END AS status
     FROM funds f

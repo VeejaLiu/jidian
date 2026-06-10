@@ -75,6 +75,8 @@ export function NavChart({ fund, data, loading, busy, onViewAllNav }: NavChartPr
         tooltip: {
           trigger: "axis",
           axisPointer: { type: "cross" },
+          appendTo: "body",
+          confine: false,
           className: "chart-tooltip-shell",
           backgroundColor: "transparent",
           borderWidth: 0,

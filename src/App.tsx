@@ -25,6 +25,7 @@ export function App() {
   const [busy, setBusy] = useState<BusyState>({ active: false, label: DEFAULT_BUSY_LABEL });
   const [fundCode, setFundCode] = useState("");
   const [fundSearch, setFundSearch] = useState("");
+  const [dropRateDraft, setDropRateDraft] = useState("");
   const [accountModalOpen, setAccountModalOpen] = useState(false);
   const [addFundModalOpen, setAddFundModalOpen] = useState(false);
   const [addingFundBusy, setAddingFundBusy] = useState(false);
@@ -67,6 +68,14 @@ export function App() {
     () => accounts.find((account) => account.id === selectedAccountId) || null,
     [accounts, selectedAccountId],
   );
+
+  useEffect(() => {
+    if (!selectedFund) {
+      setDropRateDraft("");
+      return;
+    }
+    setDropRateDraft(((Number(selectedFund.dropRate) || 0.04) * 100).toFixed(1));
+  }, [selectedFund?.id, selectedFund?.dropRate]);
 
   const accountQuery = useCallback(
     () => (selectedAccountId ? `accountId=${encodeURIComponent(selectedAccountId)}` : ""),
@@ -330,6 +339,49 @@ export function App() {
     });
   };
 
+  const handleSyncNav = async () => {
+    if (!selectedFund) return false;
+
+    const result = await runWithBusy("更新净值中...", async () => {
+      const payload = await api<{ fund: Fund; sync?: { imported?: number; confirmedTrades?: number } }>(
+        `/api/funds/${selectedFund.id}/sync-nav`,
+        {
+          method: "POST",
+          body: JSON.stringify({ accountId: selectedAccountId, fullHistory: false }),
+        },
+      );
+      await loadFunds({ preferredId: payload.fund?.id || selectedFund.id });
+      setChartRefreshKey((key) => key + 1);
+      return true;
+    });
+    return Boolean(result);
+  };
+
+  const handleSaveDropRate = async () => {
+    if (!selectedFund) return false;
+
+    const value = Number(dropRateDraft);
+    const currentValue = (Number(selectedFund.dropRate) || 0.04) * 100;
+    if (!Number.isFinite(value) || value <= 0 || value >= 100) {
+      window.alert("跌幅幅度必须大于 0 且小于 100%");
+      setDropRateDraft(currentValue.toFixed(1));
+      return false;
+    }
+
+    if (Math.abs(value - currentValue) < 0.0001) return true;
+
+    const result = await runWithBusy("保存跌幅中...", async () => {
+      await api<{ fund: Fund }>(`/api/funds/${selectedFund.id}/settings`, {
+        method: "PATCH",
+        body: JSON.stringify({ accountId: selectedAccountId, dropRatePercent: value }),
+      });
+      await loadFunds({ preferredId: selectedFund.id });
+      setChartRefreshKey((key) => key + 1);
+      return true;
+    });
+    return Boolean(result);
+  };
+
   const handleViewAllNav = () => {
     if (!selectedFund) return;
 
@@ -389,17 +441,17 @@ export function App() {
     });
   };
 
-  const handleHideFund = () => {
-    if (!selectedFund) return;
-    const confirmed = window.confirm(`确定隐藏「${selectedFund.name}」吗？交易记录和历史净值都会保留。`);
-    if (!confirmed) return;
+  const handleHideFund = async () => {
+    if (!selectedFund) return false;
 
-    runWithBusy("隐藏中...", async () => {
+    const result = await runWithBusy("隐藏中...", async () => {
       await api(`/api/funds/${selectedFund.id}?${accountQuery()}`, { method: "DELETE" });
       await loadFunds({ keepSelection: false });
       setNavModal((current) => ({ ...current, open: false }));
       setChartRefreshKey((key) => key + 1);
+      return true;
     });
+    return Boolean(result);
   };
 
   const handleRestoreFund = (fund: Fund) => {
@@ -452,11 +504,15 @@ export function App() {
           busyLabel={busy.label}
           chartData={chartData}
           chartLoading={chartLoading}
+          dropRateDraft={dropRateDraft}
           tradeType={tradeType}
           tradeDate={tradeDate}
           tradeAmount={tradeAmount}
           tradeNote={tradeNote}
           onHideFund={handleHideFund}
+          onSyncNav={handleSyncNav}
+          onDropRateDraftChange={setDropRateDraft}
+          onSaveDropRate={handleSaveDropRate}
           onViewAllNav={handleViewAllNav}
           onSubmitTrade={handleSubmitTrade}
           onTradeTypeChange={setTradeType}

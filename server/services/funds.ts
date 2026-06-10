@@ -11,7 +11,13 @@ export function getFundById(id: number, options: { includeHidden?: boolean; acco
         f.code,
         f.name,
         f.fund_type,
-        COALESCE(s.drop_rate, 0.04) AS drop_rate,
+        COALESCE(uf.drop_rate, s.drop_rate, 0.04) AS drop_rate,
+        CASE
+          WHEN ns.full_history_synced_at IS NULL THEN ns.last_incremental_sync_at
+          WHEN ns.last_incremental_sync_at IS NULL THEN ns.full_history_synced_at
+          WHEN ns.full_history_synced_at > ns.last_incremental_sync_at THEN ns.full_history_synced_at
+          ELSE ns.last_incremental_sync_at
+        END AS last_nav_sync_at,
         t.last_buy_date,
         t.last_buy_nav,
         t.latest_nav_date,
@@ -22,6 +28,7 @@ export function getFundById(id: number, options: { includeHidden?: boolean; acco
       FROM funds f
       JOIN user_funds uf ON uf.fund_id = f.id
       LEFT JOIN strategy_settings s ON s.fund_id = f.id
+      LEFT JOIN nav_sync_state ns ON ns.fund_id = f.id
       LEFT JOIN fund_trigger_status t ON t.account_id = uf.account_id AND t.fund_id = f.id
       WHERE f.id = @id ${accountFilter} ${activeFilter}`,
     )
@@ -49,6 +56,7 @@ export function mapFund(row: any, accountId: number) {
     name: row.name,
     fundType: row.fund_type || "",
     dropRate: row.drop_rate ?? 0.04,
+    lastNavSyncAt: row.last_nav_sync_at,
     status: {
       lastBuyDate: row.last_buy_date,
       lastBuyNav: row.last_buy_nav,
@@ -154,7 +162,13 @@ export function listFunds(accountId: number, options: { hidden?: boolean } = {})
         f.code,
         f.name,
         f.fund_type,
-        COALESCE(s.drop_rate, 0.04) AS drop_rate,
+        COALESCE(uf.drop_rate, s.drop_rate, 0.04) AS drop_rate,
+        CASE
+          WHEN ns.full_history_synced_at IS NULL THEN ns.last_incremental_sync_at
+          WHEN ns.last_incremental_sync_at IS NULL THEN ns.full_history_synced_at
+          WHEN ns.full_history_synced_at > ns.last_incremental_sync_at THEN ns.full_history_synced_at
+          ELSE ns.last_incremental_sync_at
+        END AS last_nav_sync_at,
         t.last_buy_date,
         t.last_buy_nav,
         t.latest_nav_date,
@@ -165,6 +179,7 @@ export function listFunds(accountId: number, options: { hidden?: boolean } = {})
       FROM funds f
       JOIN user_funds uf ON uf.fund_id = f.id
       LEFT JOIN strategy_settings s ON s.fund_id = f.id
+      LEFT JOIN nav_sync_state ns ON ns.fund_id = f.id
       LEFT JOIN fund_trigger_status t ON t.account_id = uf.account_id AND t.fund_id = f.id
       WHERE uf.account_id = ?
         AND uf.is_active = ?

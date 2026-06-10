@@ -1,0 +1,269 @@
+.chart-frame {
+  position: relative;
+  min-height: 360px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.chart-canvas {
+  width: 100%;
+  height: 360px;
+}
+
+.chart-tooltip {
+  width: 296px;
+  max-width: min(296px, calc(100vw - 32px));
+  max-height: min(520px, calc(100vh - 32px));
+  overflow: auto;
+  border: 1px solid rgba(214, 224, 229, 0.96);
+  border-radius: 10px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 18px 46px rgba(21, 31, 38, 0.18);
+  color: var(--ink);
+  line-height: 1.35;
+  backdrop-filter: blur(10px);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(101, 114, 126, 0.32) transparent;
+}
+
+.chart-tooltip::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chart-tooltip::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chart-tooltip::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(101, 114, 126, 0.28);
+}
+
+.chart-tooltip-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 10px;
+}
+
+.chart-tooltip-header div {
+  display: grid;
+  gap: 2px;
+}
+
+.chart-tooltip-header span:not(.chart-tooltip-header-mark),
+.chart-tooltip-row span {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.chart-tooltip-header strong {
+  font-size: 0.98rem;
+  letter-spacing: 0;
+}
+
+.chart-tooltip-header-mark {
+  width: 34px;
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #197b75, #b4532a, #2563eb);
+}
+
+.chart-tooltip-section {
+  display: grid;
+  gap: 8px;
+}
+
+.chart-tooltip-section + .chart-tooltip-section {
+  margin-top: 8px;
+}
+
+.chart-tooltip-section-panel {
+  border-radius: 8px;
+  padding: 10px;
+  background: #f7faf9;
+  border: 1px solid #edf3f2;
+}
+
+.chart-tooltip-divider {
+  height: 1px;
+  margin: 10px 0;
+  background: var(--line);
+}
+
+.chart-tooltip-section-title,
+.chart-tooltip-trade-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 20px;
+  color: var(--ink);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.chart-tooltip-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--muted);
+}
+
+.chart-tooltip-dot.primary {
+  background: #197b75;
+}
+
+.chart-tooltip-dot.buy {
+  background: #b4532a;
+}
+
+.chart-tooltip-dot.sell {
+  background: #2563eb;
+}
+
+.chart-tooltip-line-sample {
+  width: 20px;
+  height: 0;
+  border-top: 2px dashed #7c3aed;
+}
+
+.chart-tooltip-kpi {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.chart-tooltip-kpi span {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.chart-tooltip-kpi strong {
+  color: var(--primary-dark);
+  font-size: 1.22rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.chart-tooltip-row {
+  display: grid;
+  grid-template-columns: minmax(72px, auto) minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+}
+
+.chart-tooltip-row strong {
+  justify-self: end;
+  color: var(--ink);
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.chart-tooltip-row strong.primary {
+  color: var(--primary-dark);
+  font-size: 1.02rem;
+}
+
+.chart-tooltip-row strong.up {
+  color: #047857;
+}
+
+.chart-tooltip-row strong.down {
+  color: var(--danger);
+}
+
+.chart-tooltip-row strong.flat,
+.chart-tooltip-row strong.muted {
+  color: var(--muted);
+}
+
+.chart-tooltip-row strong.buy {
+  color: #a4441d;
+}
+
+.chart-tooltip-row strong.sell {
+  color: #1d4ed8;
+}
+
+.chart-tooltip-row strong.cost {
+  color: #7c3aed;
+}
+
+.chart-tooltip-trades {
+  display: grid;
+  gap: 8px;
+}
+
+.chart-tooltip-trade-card {
+  border-radius: 8px;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+}
+
+.chart-tooltip-trade-card.buy {
+  background: #fff1ea;
+  border-color: #fed7c2;
+}
+
+.chart-tooltip-trade-card.sell {
+  background: #eff6ff;
+  border-color: #cfe2ff;
+}
+
+.chart-tooltip-trade-card.buy .chart-tooltip-trade-title strong {
+  color: #a4441d;
+}
+
+.chart-tooltip-trade-card.sell .chart-tooltip-trade-title strong {
+  color: #1d4ed8;
+}
+
+.chart-tooltip-note {
+  display: grid;
+  gap: 4px;
+  margin-top: 2px;
+  border-radius: 8px;
+  padding: 7px 8px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.chart-tooltip-note span {
+  color: var(--ink);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.chart-tooltip-note p {
+  margin: 0;
+}
+
+.chart-loading,
+.chart-empty {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.spinner.small {
+  width: 28px;
+  height: 28px;
+  border-width: 3px;
+}

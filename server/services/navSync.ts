@@ -199,7 +199,14 @@ export async function syncFundNav(fundId: number, options: SyncOptions = {}) {
   const startDate = options.fullHistory ? "" : options.startDate ?? getDefaultSyncStartDate(fundId);
   const endDate = options.endDate || "";
   if (startDate > todayISO()) {
+    const checkedAt = new Date().toISOString();
     navSyncTouchedAt.set(fundId, Date.now());
+    upsertNavSyncState.run({
+      fundId,
+      fullHistorySynced: 0,
+      fullHistorySyncedAt: null,
+      lastIncrementalSyncAt: checkedAt,
+    });
     const decision = getSyncDecision(fundId);
     logNavSync("跳过净值同步：已是最新", {
       fundId,

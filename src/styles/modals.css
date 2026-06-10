@@ -1,0 +1,358 @@
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(15, 27, 33, 0.52);
+}
+
+.modal-panel {
+  display: grid;
+  gap: 16px;
+  width: min(760px, 100%);
+  max-height: min(760px, calc(100vh - 48px));
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 18px;
+  background: var(--surface);
+  box-shadow: 0 24px 70px rgba(15, 27, 33, 0.28);
+}
+
+.nav-history-modal {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  width: min(760px, 100%);
+  height: min(720px, calc(100vh - 48px));
+}
+
+.modal-header {
+  align-items: flex-start;
+}
+
+.modal-header .eyebrow {
+  color: var(--primary);
+}
+
+.icon-button.light {
+  flex: 0 0 auto;
+  background: var(--surface-strong);
+  color: var(--ink);
+}
+
+.modal-table {
+  position: relative;
+  height: 100%;
+  min-height: 420px;
+  overflow: auto;
+}
+
+.modal-table-loading {
+  position: absolute;
+  inset: var(--table-head-height) 0 0;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.add-fund-modal {
+  width: min(460px, 100%);
+}
+
+.trade-edit-modal {
+  width: min(520px, 100%);
+}
+
+.fund-action-modal {
+  width: min(500px, 100%);
+}
+
+.fund-action-brief {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  border: 1px solid rgba(25, 123, 117, 0.18);
+  border-radius: 8px;
+  padding: 14px;
+  background: #f4fbfa;
+}
+
+.fund-action-brief > span {
+  display: inline-grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  background: rgba(25, 123, 117, 0.12);
+  color: var(--primary-dark);
+  font-size: 1.18rem;
+  font-weight: 900;
+}
+
+.fund-action-brief strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.fund-action-brief p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.fund-action-brief.danger {
+  border-color: #ffd5cf;
+  background: #fff6f4;
+}
+
+.fund-action-brief.danger > span {
+  background: #ffe4e0;
+  color: var(--danger);
+}
+
+.fund-action-field {
+  display: grid;
+  gap: 8px;
+}
+
+.percent-input {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.percent-input:focus-within {
+  border-color: rgba(25, 123, 117, 0.45);
+  box-shadow: 0 0 0 3px rgba(25, 123, 117, 0.1);
+}
+
+.percent-input input {
+  min-height: 44px;
+  border: 0;
+  box-shadow: none;
+  text-align: right;
+  font-size: 1.1rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.percent-input span {
+  padding: 0 14px 0 8px;
+  color: var(--muted);
+  font-weight: 900;
+}
+
+.account-modal {
+  width: min(640px, 100%);
+}
+
+.account-modal-list {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  max-height: min(360px, 48vh);
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.account-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  background: #ffffff;
+}
+
+.account-card.active {
+  border-color: rgba(25, 123, 117, 0.42);
+  background: #f2fbfa;
+}
+
+.account-card-main {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+}
+
+.account-card-main span:last-child {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.account-card-main strong,
+.account-card-main small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-card-main small {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.account-card-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.account-card-actions button {
+  min-height: 32px;
+  border-radius: 8px;
+  padding: 0 10px;
+  background: var(--surface-strong);
+  color: var(--ink);
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.account-card-actions button:hover {
+  background: #e0ebee;
+}
+
+.account-card-actions button.danger {
+  background: #fff2f0;
+  color: var(--danger);
+}
+
+.account-card-actions button.danger:hover {
+  background: #ffe4e0;
+}
+
+.account-edit-form {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) auto auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.account-edit-form input {
+  min-height: 36px;
+}
+
+.account-edit-form .secondary-button {
+  min-height: 36px;
+}
+
+.account-create-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+}
+
+.hidden-funds-modal {
+  width: min(620px, 100%);
+}
+
+.hidden-funds-list {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  min-height: 220px;
+}
+
+.hidden-fund-item {
+  display: grid;
+  align-self: start;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: #ffffff;
+}
+
+.hidden-fund-item div {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.hidden-fund-item strong,
+.hidden-fund-item span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hidden-fund-item span {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.modal-inline-loading {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  min-height: 220px;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.neutral-button {
+  border: 1px solid var(--line);
+  background: #ffffff;
+  color: var(--muted);
+}
+
+.neutral-button:hover {
+  border-color: #b8c6cc;
+  background: var(--surface-strong);
+}
+
+.danger-button {
+  background: var(--danger);
+}
+
+.danger-button:hover {
+  background: #8f1d14;
+}
+
+.pagination {
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.compact-pagination {
+  margin-top: 12px;
+  min-height: var(--buy-pagination-height);
+}
+
+.pagination span {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 700;
+}

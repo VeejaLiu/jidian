@@ -1,0 +1,115 @@
+
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.form-row.compact {
+  grid-template-columns: 1fr;
+}
+
+.trade-type-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.trade-type-switch button {
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.trade-type-switch button.active {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: #ffffff;
+}
+
+.title-with-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.text-action {
+  min-height: 30px;
+  border-radius: 8px;
+  padding: 0 9px;
+  background: rgba(25, 123, 117, 0.08);
+  color: var(--primary-dark);
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.text-action:hover {
+  background: rgba(25, 123, 117, 0.15);
+}
+
+.react-datepicker-wrapper,
+.react-datepicker__input-container {
+  display: block;
+  width: 100%;
+}
+
+.date-input {
+  cursor: pointer;
+}
+
+.app-datepicker-popper {
+  z-index: 30;
+}
+
+.app-datepicker-calendar {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 18px 46px rgba(29, 45, 53, 0.16);
+  font-family: inherit;
+}
+
+.app-datepicker-calendar .react-datepicker__header {
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-strong);
+}
+
+.app-datepicker-calendar .react-datepicker__current-month,
+.app-datepicker-calendar .react-datepicker-time__header,
+.app-datepicker-calendar .react-datepicker-year-header {
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.app-datepicker-calendar .react-datepicker__day-name,
+.app-datepicker-calendar .react-datepicker__day {
+  width: 2.1rem;
+  line-height: 2.1rem;
+  margin: 0.1rem;
+}
+
+.app-datepicker-calendar .react-datepicker__day--selected,
+.app-datepicker-calendar .react-datepicker__day--keyboard-selected {
+  background: var(--primary);
+  color: #ffffff;
+}
+
+.app-datepicker-calendar .react-datepicker__day--today {
+  color: var(--accent);
+  font-weight: 800;
+}
+
+.app-datepicker-calendar .react-datepicker__day:hover {
+  background: rgba(25, 123, 117, 0.12);
+}
+
+.app-datepicker-calendar .react-datepicker__today-button {
+  border-top: 1px solid var(--line);
+  background: #ffffff;
+  color: var(--primary-dark);
+  font-weight: 800;
+}

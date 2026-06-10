@@ -22,3 +22,8 @@ pnpm-debug.log*
 
 # System files
 .DS_Store
+.idea/.gitignore
+.idea/JijinGuanliGongju.iml
+.idea/misc.xml
+.idea/modules.xml
+.idea/vcs.xml

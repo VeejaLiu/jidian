@@ -50,6 +50,7 @@ export interface Fund {
   name: string;
   fundType?: string | null;
   dropRate?: number | null;
+  lastNavSyncAt?: string | null;
   status?: FundStatus;
   position?: FundPosition;
   navHistory?: NavPoint[];

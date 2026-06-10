@@ -57,8 +57,8 @@ fundRoutes.post("/api/funds", async (req, res, next) => {
     ).run(row.id);
 
     db.prepare(
-      `INSERT INTO user_funds (account_id, fund_id, is_active)
-       VALUES (?, ?, 1)
+      `INSERT INTO user_funds (account_id, fund_id, is_active, drop_rate)
+       VALUES (?, ?, 1, 0.04)
        ON CONFLICT(account_id, fund_id) DO UPDATE SET is_active = 1`,
     ).run(accountId, row.id);
 
@@ -82,6 +82,24 @@ fundRoutes.post("/api/funds/:id/restore", (req, res) => {
   db.prepare("UPDATE user_funds SET is_active = 1 WHERE account_id = ? AND fund_id = ?")
     .run(accountId, Number(req.params.id));
   res.json({ ok: true });
+});
+
+fundRoutes.patch("/api/funds/:id/settings", (req, res, next) => {
+  try {
+    const fundId = Number(req.params.id);
+    const accountId = getAccountIdFromRequest(req);
+    const dropRatePercent = assertPositiveNumber(req.body.dropRatePercent, "跌幅幅度");
+    if (dropRatePercent >= 100) throw toHttpError("跌幅幅度必须小于 100%", 400);
+
+    const result = db
+      .prepare("UPDATE user_funds SET drop_rate = ? WHERE account_id = ? AND fund_id = ?")
+      .run(dropRatePercent / 100, accountId, fundId);
+    if (result.changes === 0) throw toHttpError("基金不存在或不属于当前账户", 404);
+
+    res.json({ fund: mapFund(getFundById(fundId, { accountId, includeHidden: true }), accountId) });
+  } catch (error) {
+    next(error);
+  }
 });
 
 fundRoutes.post("/api/funds/:id/nav", (req, res, next) => {
@@ -121,7 +139,7 @@ fundRoutes.post("/api/funds/:id/sync-nav", async (req, res, next) => {
   try {
     const fundId = Number(req.params.id);
     const accountId = getAccountIdFromRequest(req);
-    const fullHistory = req.body.fullHistory !== false && !req.body.startDate;
+    const fullHistory = req.body.fullHistory === true && !req.body.startDate;
     const startDate = req.body.startDate
       ? assertDate(req.body.startDate, "开始日期")
       : getDefaultSyncStartDate(fundId);

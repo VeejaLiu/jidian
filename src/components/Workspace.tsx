@@ -1,8 +1,11 @@
-import type { FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { NavChart } from "./chart/NavChart";
+import { FundActionMenu, type FundAction } from "./fund/FundActionMenu";
+import { FundActionModal } from "./fund/FundActionModal";
 import { SummaryCards } from "./fund/SummaryCards";
 import { TradeSection } from "./trade/TradeSection";
 import type { ChartData, Fund, TradeRecord, TradeType } from "../types/fund";
+import { formatDateTime, formatNav } from "../utils/format";
 
 interface WorkspaceProps {
   fund: Fund | null;
@@ -10,11 +13,15 @@ interface WorkspaceProps {
   busyLabel: string;
   chartData: ChartData;
   chartLoading: boolean;
+  dropRateDraft: string;
   tradeType: TradeType;
   tradeDate: string;
   tradeAmount: string;
   tradeNote: string;
-  onHideFund: () => void;
+  onHideFund: () => boolean | Promise<boolean>;
+  onSyncNav: () => boolean | Promise<boolean>;
+  onDropRateDraftChange: (value: string) => void;
+  onSaveDropRate: () => boolean | Promise<boolean>;
   onViewAllNav: () => void;
   onSubmitTrade: (event: FormEvent<HTMLFormElement>) => void;
   onTradeTypeChange: (type: TradeType) => void;
@@ -31,11 +38,15 @@ export function Workspace({
   busyLabel,
   chartData,
   chartLoading,
+  dropRateDraft,
   tradeType,
   tradeDate,
   tradeAmount,
   tradeNote,
   onHideFund,
+  onSyncNav,
+  onDropRateDraftChange,
+  onSaveDropRate,
   onViewAllNav,
   onSubmitTrade,
   onTradeTypeChange,
@@ -45,6 +56,18 @@ export function Workspace({
   onEditTrade,
   onDeleteTrade,
 }: WorkspaceProps) {
+  const [fundAction, setFundAction] = useState<FundAction | null>(null);
+  const currentDropRatePercent = ((Number(fund?.dropRate) || 0.04) * 100).toFixed(1);
+
+  const openFundAction = (action: FundAction) => {
+    if (action === "dropRate") onDropRateDraftChange(currentDropRatePercent);
+    setFundAction(action);
+  };
+
+  const closeFundAction = () => {
+    setFundAction(null);
+  };
+
   return (
     <section className="workspace" aria-live="polite">
       {busy && (
@@ -65,11 +88,25 @@ export function Workspace({
             <div>
               <p className="eyebrow">{[fund.code, fund.fundType].filter(Boolean).join(" / ") || "未填写代码"}</p>
               <h2>{fund.name}</h2>
+              <div className="fund-header-meta" aria-label="净值更新状态">
+                <span>最新净值 {fund.status?.latestNavDate || "--"} / {formatNav(fund.status?.latestNav)}</span>
+                <span>上次更新 {formatDateTime(fund.lastNavSyncAt)}</span>
+              </div>
             </div>
-            <button className="danger-link" type="button" disabled={busy} onClick={onHideFund}>
-              隐藏基金
-            </button>
+            <FundActionMenu busy={busy} onSelect={openFundAction} />
           </header>
+
+          <FundActionModal
+            action={fundAction}
+            fund={fund}
+            busy={busy}
+            dropRateDraft={dropRateDraft}
+            onDropRateDraftChange={onDropRateDraftChange}
+            onClose={closeFundAction}
+            onConfirmDropRate={onSaveDropRate}
+            onConfirmSyncNav={onSyncNav}
+            onConfirmHideFund={onHideFund}
+          />
 
           <SummaryCards fund={fund} />
           <NavChart

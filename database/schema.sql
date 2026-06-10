@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS user_funds (
   account_id INTEGER NOT NULL,
   fund_id INTEGER NOT NULL,
   is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1)),
+  drop_rate REAL NOT NULL DEFAULT 0.04 CHECK (drop_rate > 0 AND drop_rate < 1),
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now')),
   PRIMARY KEY (account_id, fund_id),
