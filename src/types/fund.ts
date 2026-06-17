@@ -23,12 +23,16 @@ export interface TradeRecord {
   shares: number | null;
   status?: "pending" | "confirmed";
   note?: string | null;
+  sellReturnRate?: number | null;
 }
 
 export interface FundPosition {
   totalAmount?: number | null;
   totalShares?: number | null;
   averageCost?: number | null;
+  displayAverageCost?: number | null;
+  displayAverageCostLabel?: string | null;
+  hasOpenPosition?: boolean | null;
   realizedAmount?: number | null;
   realizedCost?: number | null;
   realizedProfit?: number | null;

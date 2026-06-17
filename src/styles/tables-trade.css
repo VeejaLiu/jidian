@@ -58,7 +58,7 @@ tr:last-child td {
   width: 30px;
   height: 30px;
   border-radius: 8px;
-  background: #fff2f0;
+  background: var(--up-soft);
   color: var(--danger);
   font-size: 1rem;
 }
@@ -133,13 +133,13 @@ tr:last-child td {
 }
 
 .trade-badge.buy {
-  background: #fff1ea;
-  color: #a4441d;
+  background: var(--up-soft);
+  color: var(--up);
 }
 
 .trade-badge.sell {
-  background: #eff6ff;
-  color: #1d4ed8;
+  background: var(--down-soft);
+  color: var(--down-strong);
 }
 
 .trade-status {
@@ -154,13 +154,13 @@ tr:last-child td {
 }
 
 .trade-status.confirmed {
-  background: #ecfdf5;
-  color: #047857;
+  background: var(--down-soft);
+  color: var(--down-strong);
 }
 
 .trade-status.pending {
-  background: #fff7ed;
-  color: #c2410c;
+  background: var(--up-soft);
+  color: var(--up);
 }
 
 .buy-drop-tag {
@@ -179,13 +179,13 @@ tr:last-child td {
 }
 
 .buy-drop-tag.drop {
-  background: #fff7ed;
-  color: #c2410c;
+  background: var(--down-soft);
+  color: var(--down-strong);
 }
 
 .buy-drop-tag.rise {
-  background: #eff6ff;
-  color: #1d4ed8;
+  background: var(--up-soft);
+  color: var(--up);
 }
 
 .daily-change-tag {
@@ -200,18 +200,23 @@ tr:last-child td {
 }
 
 .daily-change-tag.up {
-  background: #ecfdf5;
-  color: #047857;
+  background: var(--up-soft);
+  color: var(--up);
 }
 
 .daily-change-tag.down {
-  background: #fff2f0;
-  color: #b42318;
+  background: var(--down-soft);
+  color: var(--down-strong);
 }
 
 .daily-change-tag.flat {
-  background: #f5f7f8;
+  background: var(--neutral-soft);
   color: #52636a;
+}
+
+.daily-change-tag.up {
+  background: var(--up-soft);
+  color: var(--up);
 }
 
 .muted-cell {

@@ -345,6 +345,38 @@ button:disabled {
   font-weight: 800;
 }
 
+.fund-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.fund-name-row .fund-name {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.fund-warning-badge {
+  flex: 0 0 auto;
+  display: inline-grid;
+  place-items: center;
+  min-height: 22px;
+  border-radius: 999px;
+  padding: 0 8px;
+  background: rgba(229, 57, 53, 0.16);
+  color: #ffb4b1;
+  font-size: 0.72rem;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.fund-item.active .fund-warning-badge {
+  background: rgba(229, 57, 53, 0.22);
+  color: #ffe2e0;
+}
+
 .fund-meta {
   display: block;
   min-width: 0;
@@ -370,7 +402,7 @@ button:disabled {
 .danger-link {
   width: auto;
   padding: 0 13px;
-  border: 1px solid #ffd5cf;
-  background: #fff6f4;
+  border: 1px solid rgba(229, 57, 53, 0.22);
+  background: var(--up-soft);
   color: var(--danger);
 }

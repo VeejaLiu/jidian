@@ -29,6 +29,11 @@ export function calculatePositionFromTrades(trades: TradeRecord[]) {
   let totalShares = 0;
   let realizedAmount = 0;
   let realizedCost = 0;
+  let cycleBoughtAmount = 0;
+  let cycleBoughtShares = 0;
+  let cycleRealizedCost = 0;
+  let cycleSoldShares = 0;
+  let lastClosedAverageCost: number | null = null;
 
   trades.filter((trade) => trade.status !== "pending").forEach((trade) => {
     const amount = Number(trade.amount);
@@ -36,8 +41,16 @@ export function calculatePositionFromTrades(trades: TradeRecord[]) {
     if (!Number.isFinite(amount) || amount <= 0 || !Number.isFinite(shares) || shares <= 0) return;
 
     if (trade.type === "buy") {
+      if (totalShares <= 0) {
+        cycleBoughtAmount = 0;
+        cycleBoughtShares = 0;
+        cycleRealizedCost = 0;
+        cycleSoldShares = 0;
+      }
       totalAmount += amount;
       totalShares += shares;
+      cycleBoughtAmount += amount;
+      cycleBoughtShares += shares;
       return;
     }
 
@@ -50,23 +63,40 @@ export function calculatePositionFromTrades(trades: TradeRecord[]) {
       totalShares -= soldShares;
       realizedAmount += amount;
       realizedCost += costReduction;
+      cycleRealizedCost += costReduction;
+      cycleSoldShares += soldShares;
 
       if (Math.abs(totalAmount) < 0.000001) totalAmount = 0;
       if (Math.abs(totalShares) < 0.000001) totalShares = 0;
+
+      if (totalShares === 0 && cycleSoldShares > 0) {
+        lastClosedAverageCost = cycleRealizedCost / cycleSoldShares;
+      }
     }
   });
+
+  const hasOpenPosition = totalShares > 0;
+  const displayAverageCost = hasOpenPosition
+    ? (totalShares > 0 ? totalAmount / totalShares : null)
+    : lastClosedAverageCost;
+  const displayAverageCostLabel = hasOpenPosition ? "当前成本价" : lastClosedAverageCost !== null ? "最近一轮成本价" : "成本价";
 
   return {
     totalAmount,
     totalShares,
     averageCost: totalShares > 0 ? totalAmount / totalShares : null,
+    displayAverageCost,
+    displayAverageCostLabel,
+    hasOpenPosition,
     realizedAmount,
     realizedCost,
     realizedProfit: realizedAmount - realizedCost,
   };
 }
 
-function findNegativePositionDate(trades: TradeRecord[]) {
+const SELL_AMOUNT_TOLERANCE = 0.01;
+
+function findNegativePositionState(trades: TradeRecord[]) {
   let totalShares = 0;
 
   for (const trade of trades.filter((item) => item.status !== "pending")) {
@@ -79,7 +109,12 @@ function findNegativePositionDate(trades: TradeRecord[]) {
       totalShares -= shares;
     }
 
-    if (totalShares < -0.000001) return trade.date;
+    if (totalShares < -0.000001) {
+      return {
+        trade,
+        deficitShares: Math.abs(totalShares),
+      };
+    }
   }
 
   return null;
@@ -137,8 +172,11 @@ export function assertTradeTimeline(fundId: number, accountId: number, candidate
   if (candidateTrade.status === "pending") return;
   const existingTrades = listTrades(fundId, accountId, "ASC").filter((trade) => trade.id !== ignoredTradeId);
   const candidateTrades = sortTradesByTimeline([...existingTrades, candidateTrade]);
-  const negativeDate = findNegativePositionDate(candidateTrades);
-  if (negativeDate) {
+  const negativeState = findNegativePositionState(candidateTrades);
+  if (negativeState) {
+    const nav = Number(negativeState.trade.nav);
+    const allowedDeficitShares = Number.isFinite(nav) && nav > 0 ? SELL_AMOUNT_TOLERANCE / nav : 0;
+    if (negativeState.deficitShares <= allowedDeficitShares + 0.000001) return;
     throw toHttpError("卖出份额超过当前持有份额", 400);
   }
 }

@@ -62,15 +62,16 @@ export function NavChart({ fund, data, loading, busy, onViewAllNav }: NavChartPr
       type: item.type,
     }));
     const averageCost = Number(data.position?.averageCost);
+    const hasOpenPosition = Boolean(data.position?.hasOpenPosition);
     const costLine =
-      Number.isFinite(averageCost) && filteredData.nav.length > 0
+      hasOpenPosition && Number.isFinite(averageCost) && filteredData.nav.length > 0
         ? filteredData.nav.map((item) => [item.date, averageCost])
         : [];
 
     chart.setOption(
       {
         animationDuration: 360,
-        color: ["#197b75", "#b4532a", "#2563eb", "#7c3aed"],
+        color: [getCssVar("--up"), getCssVar("--down"), getCssVar("--primary"), getCssVar("--primary-dark")],
         grid: { left: 46, right: 22, top: 34, bottom: 34 },
         tooltip: {
           trigger: "axis",
@@ -130,7 +131,7 @@ export function NavChart({ fund, data, loading, busy, onViewAllNav }: NavChartPr
             data: costLine,
             showSymbol: false,
             smooth: false,
-            lineStyle: { width: 2, type: "dashed", color: "#7c3aed" },
+            lineStyle: { width: 2, type: "dashed", color: getCssVar("--down-strong") },
             z: 4,
           },
         ],
@@ -146,12 +147,14 @@ export function NavChart({ fund, data, loading, busy, onViewAllNav }: NavChartPr
   const buyCount = confirmedTrades.filter((item) => item.type === "buy").length;
   const sellCount = confirmedTrades.filter((item) => item.type === "sell").length;
   const pendingCount = filteredData.trades.filter((item) => item.status === "pending").length;
-  const hasAverageCost = Number.isFinite(Number(data.position?.averageCost));
+  const hasAverageCost = Number.isFinite(Number(data.position?.displayAverageCost));
+  const showCostLine = Boolean(data.position?.hasOpenPosition) && Number.isFinite(Number(data.position?.averageCost));
+  const displayAverageCostLabel = data.position?.displayAverageCostLabel || "成本价";
   const summary = loading
     ? "正在加载图表..."
     : navCount === 0
       ? "暂无净值数据"
-      : `${filteredData.range.label}：${navCount} 条净值记录，买入 ${buyCount} 次，卖出 ${sellCount} 次${pendingCount ? `，待确认 ${pendingCount} 次` : ""}${hasAverageCost ? `，成本价 ${formatNav(data.position?.averageCost)}` : ""}${navCount === totalNavCount ? "" : ` / 共 ${totalNavCount} 条`}`;
+      : `${filteredData.range.label}：${navCount} 条净值记录，买入 ${buyCount} 次，卖出 ${sellCount} 次${pendingCount ? `，待确认 ${pendingCount} 次` : ""}${hasAverageCost ? `，${displayAverageCostLabel} ${formatNav(data.position?.displayAverageCost)}` : ""}${navCount === totalNavCount ? "" : ` / 共 ${totalNavCount} 条`}`;
 
   return (
     <section className="chart-block">
@@ -300,4 +303,10 @@ function escapeHtml(value: unknown) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
+}
+
+function getCssVar(name: string) {
+  if (typeof window === "undefined") return name;
+  const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return value || name;
 }

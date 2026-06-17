@@ -155,10 +155,23 @@
   color: var(--danger);
 }
 
-.summary-grid {
+.summary-stack {
   display: grid;
-  grid-template-columns: repeat(5, minmax(140px, 1fr));
-  gap: 14px;
+  gap: 12px;
+}
+
+.summary-hero,
+.summary-secondary {
+  display: grid;
+  gap: 12px;
+}
+
+.summary-hero {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.summary-secondary {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
 .metric-card,
@@ -173,38 +186,156 @@
 
 .metric-card {
   display: grid;
-  gap: 10px;
-  min-height: 118px;
-  padding: 18px;
+  gap: 8px;
+  min-height: 88px;
+  padding: 14px 15px;
 }
 
 .metric-card span {
   color: var(--muted);
-  font-size: 0.86rem;
+  font-size: 0.76rem;
   font-weight: 800;
 }
 
 .metric-card strong {
   overflow-wrap: anywhere;
-  font-size: clamp(1.25rem, 2.6vw, 2rem);
+  font-size: clamp(1.05rem, 2vw, 1.62rem);
+  line-height: 1.12;
 }
 
 .metric-card.accent {
-  border-color: #ffd8c4;
-  background: var(--accent-soft);
+  border-color: rgba(229, 57, 53, 0.2);
+  background: var(--up-soft);
 }
 
 .metric-card.accent strong {
-  color: var(--accent);
+  color: var(--up);
 }
 
 .metric-card.cost {
-  border-color: #ddd6fe;
-  background: #f5f3ff;
+  border-color: rgba(27, 143, 90, 0.2);
+  background: var(--down-soft);
 }
 
 .metric-card.cost strong {
-  color: #6d28d9;
+  color: var(--down-strong);
+}
+
+.metric-card.metric-card-positive {
+  border-color: rgba(229, 57, 53, 0.2);
+  background: var(--up-soft);
+}
+
+.metric-card.metric-card-positive strong {
+  color: var(--up);
+}
+
+.metric-card.metric-card-negative {
+  border-color: rgba(27, 143, 90, 0.2);
+  background: var(--down-soft);
+}
+
+.metric-card.metric-card-negative strong {
+  color: var(--down-strong);
+}
+
+.metric-card-hero strong {
+  font-size: clamp(1.22rem, 2.35vw, 1.9rem);
+}
+
+.metric-card-compact {
+  min-height: 78px;
+}
+
+.trigger-card {
+  grid-column: span 2;
+  min-height: 88px;
+}
+
+.trigger-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  align-content: start;
+}
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  border-radius: 999px;
+  padding: 0 10px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  letter-spacing: 0;
+}
+
+.status-chip.primary {
+  background: var(--up-soft);
+  color: var(--up);
+}
+
+.status-chip.danger {
+  background: var(--down-soft);
+  color: var(--down-strong);
+}
+
+.status-chip.neutral {
+  background: var(--neutral-soft);
+  color: #52636a;
+}
+
+.status-chip.move-chip {
+  gap: 6px;
+  padding-inline: 9px 10px;
+}
+
+.status-chip.move-chip strong {
+  font-weight: 900;
+}
+
+.move-chip-label {
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.move-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+}
+
+.move-icon svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.status-chip.move-chip.up {
+  color: var(--up);
+  background: var(--up-soft);
+}
+
+.status-chip.move-chip.down {
+  color: var(--down-strong);
+  background: var(--down-soft);
+}
+
+.status-chip.move-chip.flat {
+  color: #52636a;
+  background: var(--neutral-soft);
+}
+
+.trigger-card strong {
+  font-size: 0.92rem;
 }
 
 .input-grid,
@@ -242,4 +373,26 @@
 
 .buy-grid .data-form {
   align-content: start;
+}
+
+@media (max-width: 1180px) {
+  .summary-hero,
+  .summary-secondary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .trigger-card {
+    grid-column: span 1;
+  }
+}
+
+@media (max-width: 720px) {
+  .summary-hero,
+  .summary-secondary {
+    grid-template-columns: 1fr;
+  }
+
+  .trigger-tags {
+    gap: 6px;
+  }
 }

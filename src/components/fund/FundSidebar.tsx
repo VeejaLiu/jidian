@@ -79,7 +79,10 @@ export function FundSidebar({
               disabled={busy || addingBusy}
               onClick={() => onSelectFund(fund.id)}
             >
-              <span className="fund-name">{fund.name}</span>
+              <span className="fund-name-row">
+                <span className="fund-name">{fund.name}</span>
+                {fund.status?.state === "triggered" && <span className="fund-warning-badge">已触发</span>}
+              </span>
               <span className="fund-meta">
                 {[fund.code, fund.fundType].filter(Boolean).join(" / ") || "未填写代码"}
               </span>

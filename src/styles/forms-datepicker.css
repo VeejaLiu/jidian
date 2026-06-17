@@ -99,7 +99,7 @@
 }
 
 .app-datepicker-calendar .react-datepicker__day--today {
-  color: var(--accent);
+  color: var(--up);
   font-weight: 800;
 }
 

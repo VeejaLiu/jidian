@@ -8,8 +8,13 @@
   --line: #dbe3e7;
   --primary: #197b75;
   --primary-dark: #0f5f5a;
-  --accent: #b4532a;
-  --accent-soft: #fff1ea;
+  --up: #e53935;
+  --up-strong: #c62828;
+  --up-soft: #ffefef;
+  --down: #1b8f5a;
+  --down-strong: #157347;
+  --down-soft: #eefaf3;
+  --neutral-soft: #f5f7f8;
   --danger: #b42318;
   --shadow: 0 14px 38px rgba(29, 45, 53, 0.09);
   --buy-panel-height: 390px;

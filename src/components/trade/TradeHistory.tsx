@@ -15,6 +15,7 @@ export function TradeHistory({ fund, onEditTrade, onDeleteTrade }: TradeHistoryP
   const trades = fund.trades || fund.buys || [];
   const latestTrade = trades[0];
   const buyDropMap = useMemo(() => buildBuyDropMap(trades), [trades]);
+  const sellReturnRateMap = useMemo(() => buildSellReturnRateMap(trades), [trades]);
   const pageSize = 5;
   const totalPages = Math.max(1, Math.ceil(trades.length / pageSize));
   const safePage = Math.min(page, totalPages);
@@ -45,6 +46,7 @@ export function TradeHistory({ fund, onEditTrade, onDeleteTrade }: TradeHistoryP
               <th>日期</th>
               <th>净值</th>
               <th>较上次买入</th>
+              <th>卖出收益率</th>
               <th>金额</th>
               <th>份额</th>
               <th>备注</th>
@@ -75,6 +77,10 @@ export function TradeHistory({ fund, onEditTrade, onDeleteTrade }: TradeHistoryP
               {
                 key: "buyDrop",
                 render: (record) => <BuyDropCell record={record} drop={buyDropMap.get(record.id)} />,
+              },
+              {
+                key: "sellReturnRate",
+                render: (record) => <SellReturnRateCell record={record} rate={sellReturnRateMap.get(record.id)} />,
               },
               { key: "amount", render: (record) => formatMoney(record.amount) },
               { key: "shares", render: (record) => (record.status === "pending" ? "待确认" : formatShares(record.shares)) },
@@ -111,6 +117,11 @@ type BuyDropInfo =
   | { kind: "first" }
   | { kind: "drop"; percent: number };
 
+type SellReturnRateInfo =
+  | { kind: "pending" }
+  | { kind: "empty" }
+  | { kind: "value"; percent: number };
+
 function buildBuyDropMap(trades: TradeRecord[]) {
   const confirmedBuys = trades
     .filter((trade) => trade.type === "buy" && trade.status !== "pending" && Number(trade.nav) > 0)
@@ -135,6 +146,64 @@ function buildBuyDropMap(trades: TradeRecord[]) {
   return map;
 }
 
+function buildSellReturnRateMap(trades: TradeRecord[]) {
+  const timeline = [...trades].sort((left, right) => {
+    if (left.date === right.date) {
+      if (left.type === right.type) return left.id - right.id;
+      return left.type === "buy" ? -1 : 1;
+    }
+    return left.date.localeCompare(right.date);
+  });
+
+  let totalAmount = 0;
+  let totalShares = 0;
+  const map = new Map<number, SellReturnRateInfo>();
+
+  timeline.forEach((trade) => {
+    if (trade.type === "sell" && trade.status === "pending") {
+      map.set(trade.id, { kind: "pending" });
+      return;
+    }
+
+    if (trade.status === "pending") return;
+
+    const amount = Number(trade.amount);
+    const shares = Number(trade.shares);
+    if (!Number.isFinite(amount) || amount <= 0 || !Number.isFinite(shares) || shares <= 0) {
+      if (trade.type === "sell") map.set(trade.id, { kind: "empty" });
+      return;
+    }
+
+    if (trade.type === "buy") {
+      totalAmount += amount;
+      totalShares += shares;
+      return;
+    }
+
+    const averageCost = totalShares > 0 ? totalAmount / totalShares : 0;
+    const soldShares = Math.min(shares, totalShares);
+    if (!Number.isFinite(averageCost) || averageCost <= 0 || soldShares <= 0) {
+      map.set(trade.id, { kind: "empty" });
+      return;
+    }
+
+    const realizedCost = averageCost * soldShares;
+    const realizedProfit = amount - realizedCost;
+    map.set(trade.id, {
+      kind: "value",
+      percent: realizedCost > 0 ? (realizedProfit / realizedCost) * 100 : 0,
+    });
+
+    totalAmount -= realizedCost;
+    totalShares -= soldShares;
+
+    if (Math.abs(totalAmount) < 0.000001) totalAmount = 0;
+    if (Math.abs(totalShares) < 0.000001) totalShares = 0;
+  });
+
+  return map;
+}
+
 function BuyDropCell({ record, drop }: { record: TradeRecord; drop?: BuyDropInfo }) {
   if (record.type !== "buy") return <span className="muted-cell">--</span>;
   if (record.status === "pending") return <span className="muted-cell">待确认</span>;
@@ -147,4 +216,15 @@ function BuyDropCell({ record, drop }: { record: TradeRecord; drop?: BuyDropInfo
       {isDrop ? "下跌" : "上涨"} {Math.abs(drop.percent).toFixed(2)}%
     </span>
   );
+}
+
+function SellReturnRateCell({ record, rate }: { record: TradeRecord; rate?: SellReturnRateInfo }) {
+  if (record.type !== "sell") return <span className="muted-cell">--</span>;
+  if (!rate || rate.kind === "empty") return <span className="muted-cell">--</span>;
+  if (rate.kind === "pending") return <span className="muted-cell">待确认</span>;
+
+  const tone = Math.abs(rate.percent) < 0.005 ? "flat" : rate.percent >= 0 ? "up" : "down";
+  const label = `${rate.percent >= 0 ? "+" : ""}${rate.percent.toFixed(2)}%`;
+
+  return <span className={`daily-change-tag ${tone}`}>{label}</span>;
 }

@@ -108,12 +108,12 @@
 }
 
 .fund-action-brief.danger {
-  border-color: #ffd5cf;
-  background: #fff6f4;
+  border-color: rgba(229, 57, 53, 0.22);
+  background: var(--up-soft);
 }
 
 .fund-action-brief.danger > span {
-  background: #ffe4e0;
+  background: rgba(229, 57, 53, 0.12);
   color: var(--danger);
 }
 
@@ -228,16 +228,16 @@
 }
 
 .account-card-actions button:hover {
-  background: #e0ebee;
+  background: var(--surface-strong);
 }
 
 .account-card-actions button.danger {
-  background: #fff2f0;
+  background: var(--up-soft);
   color: var(--danger);
 }
 
 .account-card-actions button.danger:hover {
-  background: #ffe4e0;
+  background: rgba(229, 57, 53, 0.12);
 }
 
 .account-edit-form {
@@ -338,7 +338,7 @@
 }
 
 .danger-button:hover {
-  background: #8f1d14;
+  background: #c62828;
 }
 
 .pagination {
