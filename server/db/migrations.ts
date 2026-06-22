@@ -154,6 +154,20 @@ export function migrateAccounts() {
   `);
 }
 
+export function migrateAssetTypes() {
+  const fundColumns = columnNames("funds");
+  if (!fundColumns.includes("asset_type")) {
+    db.exec("ALTER TABLE funds ADD COLUMN asset_type TEXT NOT NULL DEFAULT 'fund' CHECK (asset_type IN ('fund', 'stock'));");
+  }
+}
+
+export function migrateTradeFees() {
+  const tradeColumns = tableExists("trade_records") ? columnNames("trade_records") : [];
+  if (tradeColumns.length && !tradeColumns.includes("fee")) {
+    db.exec("ALTER TABLE trade_records ADD COLUMN fee REAL NOT NULL DEFAULT 0 CHECK (fee >= 0);");
+  }
+}
+
 export function migrateTradeRecordsForPendingStatus() {
   db.exec(`
     DROP VIEW IF EXISTS fund_trigger_status;

@@ -2,7 +2,7 @@ import { db } from "../db/database";
 import { addDaysISO, todayISO } from "../utils/date";
 import { toHttpError } from "../utils/httpError";
 import { getFundById } from "./funds";
-import { fetchNavHistory } from "./eastmoney";
+import { fetchNavHistory, fetchStockPriceHistory, type PriceHistoryFetchResult } from "./eastmoney";
 import { assertTradeTimeline } from "./trades";
 
 const navSyncJobs = new Set<number>();
@@ -39,7 +39,7 @@ function formatDuration(ms: number) {
   return restMinutes ? `${hours}小时${restMinutes}分钟` : `${hours}小时`;
 }
 
-function getDefaultSyncStartDate(fundId: number) {
+function getDefaultSyncStartDate(fundId: number, options: { includeLatestDay?: boolean } = {}) {
   const syncState = db
     .prepare("SELECT full_history_synced FROM nav_sync_state WHERE fund_id = ?")
     .get(fundId) as { full_history_synced?: number } | undefined;
@@ -50,6 +50,9 @@ function getDefaultSyncStartDate(fundId: number) {
     .get(fundId) as { nav_date?: string } | undefined;
 
   if (latest?.nav_date) {
+    if (options.includeLatestDay) {
+      return latest.nav_date;
+    }
     return addDaysISO(latest.nav_date, 1);
   }
 
@@ -188,16 +191,28 @@ function confirmPendingTrades(fundId: number) {
 export async function syncFundNav(fundId: number, options: SyncOptions = {}) {
   const source = options.source || "system";
   if (navSyncJobs.has(fundId)) {
-    logNavSync("跳过净值同步：已有任务运行中", { fundId, source });
+    logNavSync("跳过价格同步：已有任务运行中", { fundId, source });
     return { imported: 0, skipped: true, reason: "syncing" };
   }
 
   const fund = getFundById(fundId);
-  if (!fund) throw toHttpError("基金不存在", 404);
-  if (!fund.code) throw toHttpError("请先填写基金代码", 400);
+  if (!fund) throw toHttpError("资产不存在", 404);
+  if (!fund.code) throw toHttpError(fund?.asset_type === "stock" ? "请先填写股票代码" : "请先填写基金代码", 400);
+  const isStock = fund.asset_type === "stock";
 
-  const startDate = options.fullHistory ? "" : options.startDate ?? getDefaultSyncStartDate(fundId);
+  const startDate = options.fullHistory
+    ? ""
+    : options.startDate ?? getDefaultSyncStartDate(fundId, { includeLatestDay: isStock && source === "manual" });
   const endDate = options.endDate || "";
+
+  if (isStock && source === "manual") {
+    logNavSync("股票手动同步将包含最新交易日", {
+      fundId,
+      code: fund.code,
+      computedStartDate: startDate || "成立以来",
+    });
+  }
+
   if (startDate > todayISO()) {
     const checkedAt = new Date().toISOString();
     navSyncTouchedAt.set(fundId, Date.now());
@@ -208,10 +223,11 @@ export async function syncFundNav(fundId: number, options: SyncOptions = {}) {
       lastIncrementalSyncAt: checkedAt,
     });
     const decision = getSyncDecision(fundId);
-    logNavSync("跳过净值同步：已是最新", {
+    logNavSync("跳过价格同步：已是最新", {
       fundId,
       code: fund.code,
       name: fund.name,
+      assetType: fund.asset_type,
       source,
       startDate,
       nextSyncAt: formatLocalTime(decision.nextSyncAt),
@@ -223,10 +239,11 @@ export async function syncFundNav(fundId: number, options: SyncOptions = {}) {
   navSyncJobs.add(fundId);
   const mode = startDate ? "incremental" : "full";
   const startedAt = Date.now();
-  logNavSync("开始净值同步", {
+  logNavSync("开始价格同步", {
     fundId,
     code: fund.code,
     name: fund.name,
+    assetType: fund.asset_type,
     source,
     mode,
     startDate: startDate || "成立以来",
@@ -234,7 +251,46 @@ export async function syncFundNav(fundId: number, options: SyncOptions = {}) {
   });
 
   try {
-    const result = await fetchNavHistory(fund.code, startDate, endDate);
+    const result: PriceHistoryFetchResult = isStock
+      ? await fetchStockPriceHistory(fund.code, startDate, endDate)
+      : await fetchNavHistory(fund.code, startDate, endDate);
+
+    if (isStock) {
+      logNavSync("股票同步返回名称信息", {
+        fundId,
+        code: fund.code,
+        currentName: fund.name,
+        returnedName: result.assetName || "(empty)",
+      });
+    }
+
+    if (isStock && result.assetName && result.assetName !== fund.name && result.assetName !== fund.code) {
+      const updateResult = db.prepare("UPDATE funds SET name = ? WHERE id = ?").run(result.assetName, fundId);
+      const updatedFund = db.prepare("SELECT name FROM funds WHERE id = ?").get(fundId) as { name?: string } | undefined;
+      logNavSync("股票名称已更新", {
+        fundId,
+        code: fund.code,
+        previousName: fund.name,
+        nextName: result.assetName,
+        changes: updateResult.changes,
+        savedName: updatedFund?.name || "(unknown)",
+      });
+    } else if (isStock) {
+      logNavSync("股票名称未更新", {
+        fundId,
+        code: fund.code,
+        currentName: fund.name,
+        returnedName: result.assetName || "(empty)",
+        reason: !result.assetName
+          ? "missing-returned-name"
+          : result.assetName === fund.name
+            ? "same-as-current-name"
+            : result.assetName === fund.code
+              ? "returned-name-equals-code"
+              : "condition-not-met",
+      });
+    }
+
     const transaction = db.transaction((rows: typeof result.rows) => {
       rows.forEach((row) => {
         upsertNav.run({
@@ -256,10 +312,11 @@ export async function syncFundNav(fundId: number, options: SyncOptions = {}) {
     });
     const decision = getSyncDecision(fundId);
 
-    logNavSync("完成净值同步", {
+    logNavSync("完成价格同步", {
       fundId,
       code: fund.code,
       name: fund.name,
+      assetType: fund.asset_type,
       source,
       mode,
       imported: result.rows.length,
@@ -282,10 +339,11 @@ export async function syncFundNav(fundId: number, options: SyncOptions = {}) {
       confirmedTrades,
     };
   } catch (error) {
-    logNavSync("净值同步失败", {
+    logNavSync("价格同步失败", {
       fundId,
       code: fund.code,
       name: fund.name,
+      assetType: fund.asset_type,
       source,
       mode,
       durationMs: Date.now() - startedAt,
@@ -297,27 +355,32 @@ export async function syncFundNav(fundId: number, options: SyncOptions = {}) {
   }
 }
 
+export async function syncAssetPrice(fundId: number, options: SyncOptions = {}) {
+  return syncFundNav(fundId, options);
+}
+
 export function syncActiveFundsInBackground() {
   const funds = db
     .prepare(
-      `SELECT DISTINCT f.id, f.code, f.name
+      `SELECT DISTINCT f.id, f.code, f.name, f.asset_type
        FROM funds f
        JOIN user_funds uf ON uf.fund_id = f.id
        WHERE uf.is_active = 1
          AND f.code IS NOT NULL
          AND f.code != ''`,
     )
-    .all() as Array<{ id: number; code: string; name: string }>;
+    .all() as Array<{ id: number; code: string; name: string; asset_type: string }>;
 
-  logNavSync("触发静默净值检查", { activeFunds: funds.length });
+  logNavSync("触发静默价格检查", { activeFunds: funds.length });
 
   funds.forEach((fund) => {
     const decision = getSyncDecision(fund.id);
     if (decision.skip) {
-      logNavSync("跳过静默净值同步", {
+      logNavSync("跳过静默价格同步", {
         fundId: fund.id,
         code: fund.code,
         name: fund.name,
+        assetType: fund.asset_type,
         reason: decision.reason,
         pendingTrade: decision.hasPendingTrade ? "yes" : "no",
         nextSyncAt: formatLocalTime(decision.nextSyncAt),
@@ -327,16 +390,17 @@ export function syncActiveFundsInBackground() {
       return;
     }
 
-    logNavSync("排队静默净值同步", {
+    logNavSync("排队静默价格同步", {
       fundId: fund.id,
       code: fund.code,
       name: fund.name,
+      assetType: fund.asset_type,
       pendingTrade: decision.hasPendingTrade ? "yes" : "no",
       interval: formatDuration(decision.interval),
     });
 
-    syncFundNav(fund.id, { source: "background" }).catch((error) => {
-      console.warn(`静默同步净值失败 fund_id=${fund.id}: ${error.message}`);
+    syncAssetPrice(fund.id, { source: "background" }).catch((error) => {
+      console.warn(`静默同步价格失败 fund_id=${fund.id}: ${error.message}`);
     });
   });
 }

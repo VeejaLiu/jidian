@@ -72,6 +72,33 @@
   width: min(500px, 100%);
 }
 
+.import-trades-modal {
+  width: min(820px, 100%);
+}
+
+.import-textarea-field {
+  display: grid;
+  gap: 8px;
+}
+
+.import-textarea-field textarea {
+  width: 100%;
+  min-height: 280px;
+  resize: vertical;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px 14px;
+  background: #ffffff;
+  color: var(--ink);
+  line-height: 1.55;
+}
+
+.import-textarea-field textarea:focus {
+  outline: none;
+  border-color: rgba(25, 123, 117, 0.45);
+  box-shadow: 0 0 0 3px rgba(25, 123, 117, 0.1);
+}
+
 .fund-action-brief {
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr);

@@ -6,7 +6,7 @@ import { CanvasRenderer } from "echarts/renderers";
 import { CHART_RANGES } from "../../constants/app";
 import type { ChartData, Fund } from "../../types/fund";
 import { filterChartData } from "../../utils/chart";
-import { formatChartDate, formatMoney, formatNav, formatShares } from "../../utils/format";
+import { formatChartDate, formatMoney, formatNav, formatUnits } from "../../utils/format";
 
 echarts.use([GridComponent, TooltipComponent, LineChart, ScatterChart, CanvasRenderer]);
 
@@ -19,6 +19,7 @@ interface NavChartProps {
 }
 
 export function NavChart({ fund, data, loading, busy, onViewAllNav }: NavChartProps) {
+  const isStock = fund.assetType === "stock";
   const chartRef = useRef<HTMLDivElement | null>(null);
   const instanceRef = useRef<echarts.ECharts | null>(null);
   const [rangeKey, setRangeKey] = useState("6m");
@@ -53,6 +54,7 @@ export function NavChart({ fund, data, loading, busy, onViewAllNav }: NavChartPr
       shares: item.shares,
       note: item.note,
       type: item.type,
+      assetType: fund.assetType,
     }));
     const sellPoints = confirmedTrades.filter((item) => item.type === "sell").map((item) => ({
       value: [item.date, Number(item.nav)],
@@ -60,6 +62,7 @@ export function NavChart({ fund, data, loading, busy, onViewAllNav }: NavChartPr
       shares: item.shares,
       note: item.note,
       type: item.type,
+      assetType: fund.assetType,
     }));
     const averageCost = Number(data.position?.averageCost);
     const hasOpenPosition = Boolean(data.position?.hasOpenPosition);
@@ -100,7 +103,7 @@ export function NavChart({ fund, data, loading, busy, onViewAllNav }: NavChartPr
         },
         series: [
           {
-            name: "单位净值",
+            name: isStock ? "价格" : "单位净值",
             type: "line",
             data: navPoints,
             showSymbol: false,
@@ -153,22 +156,22 @@ export function NavChart({ fund, data, loading, busy, onViewAllNav }: NavChartPr
   const summary = loading
     ? "正在加载图表..."
     : navCount === 0
-      ? "暂无净值数据"
-      : `${filteredData.range.label}：${navCount} 条净值记录，买入 ${buyCount} 次，卖出 ${sellCount} 次${pendingCount ? `，待确认 ${pendingCount} 次` : ""}${hasAverageCost ? `，${displayAverageCostLabel} ${formatNav(data.position?.displayAverageCost)}` : ""}${navCount === totalNavCount ? "" : ` / 共 ${totalNavCount} 条`}`;
+      ? `暂无${isStock ? "价格" : "净值"}数据`
+      : `${filteredData.range.label}：${navCount} 条${isStock ? "价格" : "净值"}记录，买入 ${buyCount} 次，卖出 ${sellCount} 次${pendingCount ? `，待确认 ${pendingCount} 次` : ""}${hasAverageCost ? `，${displayAverageCostLabel} ${formatNav(data.position?.displayAverageCost)}` : ""}${navCount === totalNavCount ? "" : ` / 共 ${totalNavCount} 条`}`;
 
   return (
     <section className="chart-block">
       <div className="table-title">
         <div>
           <div className="title-with-actions">
-            <h3>净值走势</h3>
+            <h3>{isStock ? "价格走势" : "净值走势"}</h3>
             <button className="text-action" type="button" disabled={busy} onClick={onViewAllNav}>
               查看更多历史
             </button>
           </div>
           <span>{summary}</span>
         </div>
-        <div className="range-switcher" aria-label="净值走势时间范围">
+        <div className="range-switcher" aria-label={`${isStock ? "价格" : "净值"}走势时间范围`}>
           {CHART_RANGES.map((range) => (
             <button
               key={range.key}
@@ -189,15 +192,15 @@ export function NavChart({ fund, data, loading, busy, onViewAllNav }: NavChartPr
             <strong>加载图表中...</strong>
           </div>
         )}
-        {!loading && navCount === 0 && <div className="chart-empty">暂无可展示的净值走势</div>}
-        <div className="chart-canvas" ref={chartRef} aria-label={`${fund.name} 净值走势图`} />
+        {!loading && navCount === 0 && <div className="chart-empty">暂无可展示的{isStock ? "价格" : "净值"}走势</div>}
+        <div className="chart-canvas" ref={chartRef} aria-label={`${fund.name}${isStock ? "价格" : "净值"}走势图`} />
       </div>
     </section>
   );
 }
 
 function renderChartTooltip(params: any[]) {
-  const navParam = params.find((param) => param.seriesName === "单位净值");
+  const navParam = params.find((param) => param.seriesName === "单位净值" || param.seriesName === "价格");
   const tradeParams = params.filter((param) => param.seriesName === "买入点" || param.seriesName === "卖出点");
   const costParam = params.find((param) => param.seriesName === "成本价");
   const date = formatChartDate(params[0]?.axisValue);
@@ -206,7 +209,7 @@ function renderChartTooltip(params: any[]) {
     <div class="chart-tooltip">
       <div class="chart-tooltip-header">
         <div>
-          <span>净值日期</span>
+          <span>价格日期</span>
           <strong>${escapeHtml(date)}</strong>
         </div>
         <span class="chart-tooltip-header-mark" aria-hidden="true"></span>
@@ -225,10 +228,10 @@ function renderNavTooltipSection(param: any) {
     <div class="chart-tooltip-section chart-tooltip-section-panel">
       <div class="chart-tooltip-section-title">
         <span class="chart-tooltip-dot primary"></span>
-        <span>净值表现</span>
+        <span>价格表现</span>
       </div>
       <div class="chart-tooltip-kpi">
-        <span>单位净值</span>
+        <span>价格</span>
         <strong>${escapeHtml(formatNav(param.value?.[1]))}</strong>
       </div>
       <div class="chart-tooltip-row">
@@ -261,6 +264,7 @@ function renderTradeTooltipSection(param: any) {
   const label = isBuy ? "买入" : "卖出";
   const tone = isBuy ? "buy" : "sell";
   const note = point.note ? `<div class="chart-tooltip-note"><span>备注</span><p>${escapeHtml(point.note)}</p></div>` : "";
+  const unitLabel = point.assetType === "stock" ? "股数" : "份额";
 
   return `
     <div class="chart-tooltip-section chart-tooltip-trade-card ${tone}">
@@ -270,7 +274,7 @@ function renderTradeTooltipSection(param: any) {
       </div>
       ${renderMetricRow("净值", formatNav(param.value?.[1]), tone)}
       ${renderMetricRow("金额", formatMoney(point.amount), "muted")}
-      ${renderMetricRow("份额", formatShares(point.shares), "muted")}
+      ${renderMetricRow(unitLabel, formatUnits(point.shares, point.assetType), "muted")}
       ${note}
     </div>
   `;

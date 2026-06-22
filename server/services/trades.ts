@@ -13,6 +13,7 @@ export function listTrades(fundId: number, accountId: number, order: "ASC" | "DE
         trade_date AS date,
         trade_nav AS nav,
         amount,
+        fee,
         shares,
         status,
         note
@@ -140,12 +141,32 @@ export function buildTradeInput(fundId: number, body: any, forcedType: "buy" | "
     throw toHttpError("交易类型必须是买入或卖出", 400);
   }
 
+  const asset = db.prepare("SELECT asset_type FROM funds WHERE id = ?").get(fundId) as { asset_type?: string } | undefined;
+  const isStock = asset?.asset_type === "stock";
   const tradeDate = assertDate(body.date, "交易日期");
-  const amount = assertPositiveNumber(body.amount, tradeType === "buy" ? "买入金额" : "卖出金额");
-  let nav = optionalPositiveNumber(body.nav, "交易净值");
+  let amount = 0;
+  let fee = 0;
+  let nav = optionalPositiveNumber(body.nav, isStock ? "成交价格" : "交易净值");
+  let shares = optionalPositiveNumber(body.shares, isStock ? "成交股数" : "交易份额");
   let status: "pending" | "confirmed" = "confirmed";
 
-  if (!nav) {
+  if (isStock) {
+    nav = assertPositiveNumber(body.nav, tradeType === "buy" ? "买入价格" : "卖出价格");
+    shares = assertPositiveNumber(body.shares, tradeType === "buy" ? "买入股数" : "卖出股数");
+    fee = Number(body.fee || 0);
+    if (!Number.isFinite(fee) || fee < 0) {
+      throw toHttpError("税费不能小于 0", 400);
+    }
+    const grossAmount = nav * shares;
+    amount = Number((tradeType === "buy" ? grossAmount + fee : grossAmount - fee).toFixed(2));
+    if (amount <= 0) {
+      throw toHttpError("扣除税费后的成交金额必须大于 0", 400);
+    }
+  } else {
+    amount = assertPositiveNumber(body.amount, tradeType === "buy" ? "买入金额" : "卖出金额");
+  }
+
+  if (!isStock && !nav) {
     const navRow = db
       .prepare("SELECT unit_nav FROM nav_history WHERE fund_id = ? AND nav_date = ?")
       .get(fundId, tradeDate) as { unit_nav?: number } | undefined;
@@ -162,7 +183,8 @@ export function buildTradeInput(fundId: number, body: any, forcedType: "buy" | "
     date: tradeDate,
     nav,
     amount,
-    shares: nav ? amount / nav : null,
+    fee,
+    shares: isStock ? shares : nav ? amount / nav : null,
     status,
     note: cleanText(body.note),
   };

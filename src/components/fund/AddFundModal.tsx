@@ -1,19 +1,20 @@
 import { useEffect, type FormEvent } from "react";
+import type { AssetDraft, AssetType } from "../../types/fund";
 
 interface AddFundModalProps {
   open: boolean;
-  fundCode: string;
+  draft: AssetDraft;
   busy: boolean;
-  onFundCodeChange: (value: string) => void;
+  onDraftChange: (draft: AssetDraft) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onClose: () => void;
 }
 
 export function AddFundModal({
   open,
-  fundCode,
+  draft,
   busy,
-  onFundCodeChange,
+  onDraftChange,
   onSubmit,
   onClose,
 }: AddFundModalProps) {
@@ -25,6 +26,11 @@ export function AddFundModal({
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [busy, onClose, open]);
 
+  const updateType = (assetType: AssetType) => onDraftChange({ ...draft, assetType });
+  const updateCode = (code: string) => onDraftChange({ ...draft, code });
+  const updateName = (name: string) => onDraftChange({ ...draft, name });
+  const isStock = draft.assetType === "stock";
+
   if (!open) return null;
 
   return (
@@ -32,24 +38,54 @@ export function AddFundModal({
       <form className="modal-panel add-fund-modal" onSubmit={onSubmit}>
         <div className="modal-header">
           <div>
-            <p className="eyebrow">添加基金</p>
-            <h2 id="addFundModalTitle">添加到我的基金</h2>
+            <p className="eyebrow">添加资产</p>
+            <h2 id="addFundModalTitle">添加到我的资产列表</h2>
           </div>
           <button className="icon-button light" type="button" aria-label="关闭" disabled={busy} onClick={onClose}>
             ×
           </button>
         </div>
 
-        <label>
-          <span>基金代码</span>
-          <input
-            value={fundCode}
-            onChange={(event) => onFundCodeChange(event.target.value)}
-            placeholder="例如：000001"
-            inputMode="numeric"
+        <div className="trade-type-switch" aria-label="资产类型">
+          <button
+            className={draft.assetType === "fund" ? "active" : ""}
+            type="button"
+            aria-pressed={draft.assetType === "fund"}
             disabled={busy}
-            required
+            onClick={() => updateType("fund")}
+          >
+            基金
+          </button>
+          <button
+            className={draft.assetType === "stock" ? "active" : ""}
+            type="button"
+            aria-pressed={draft.assetType === "stock"}
+            disabled={busy}
+            onClick={() => updateType("stock")}
+          >
+            股票
+          </button>
+        </div>
+
+        <label>
+          <span>{isStock ? "股票代码" : "基金代码"}</span>
+          <input
+            value={draft.code}
+            onChange={(event) => updateCode(event.target.value)}
+            placeholder={isStock ? "例如：600519 或 AAPL" : "例如：000001"}
+            inputMode={isStock ? "text" : "numeric"}
+            disabled={busy}
             autoFocus
+          />
+        </label>
+
+        <label>
+          <span>{isStock ? "股票名称" : "基金名称"}</span>
+          <input
+            value={draft.name}
+            onChange={(event) => updateName(event.target.value)}
+            placeholder={isStock ? "例如：贵州茅台" : "可选，不填则尝试自动识别"}
+            disabled={busy}
           />
         </label>
 
@@ -58,7 +94,7 @@ export function AddFundModal({
             取消
           </button>
           <button className="secondary-button" type="submit" disabled={busy}>
-            {busy ? "添加中..." : "添加基金"}
+            {busy ? "添加中..." : `添加${isStock ? "股票" : "基金"}`}
           </button>
         </div>
       </form>

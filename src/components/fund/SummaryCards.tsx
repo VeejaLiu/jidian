@@ -1,11 +1,12 @@
 import type { Fund } from "../../types/fund";
-import { formatNav, formatPercent, formatShares, formatMoney } from "../../utils/format";
+import { formatNav, formatPercent, formatUnits, formatMoney } from "../../utils/format";
 
 interface SummaryCardsProps {
   fund: Fund;
 }
 
 export function SummaryCards({ fund }: SummaryCardsProps) {
+  const isStock = fund.assetType === "stock";
   const status = fund.status || {};
   const position = fund.position || {};
   const trades = fund.trades || fund.buys || [];
@@ -16,30 +17,33 @@ export function SummaryCards({ fund }: SummaryCardsProps) {
   const totalShares = Number(position.totalShares);
   const realizedCost = Number(position.realizedCost);
   const realizedProfit = Number(position.realizedProfit);
-  const holdingValue = Number.isFinite(totalShares) && Number.isFinite(Number(status.latestNav)) ? totalShares * Number(status.latestNav) : NaN;
+  const latestPrice = status.latestPrice ?? status.latestNav;
+  const lastBuyPrice = status.lastBuyPrice ?? status.lastBuyNav;
+  const triggerPrice = status.triggerPrice ?? status.triggerNav;
+  const holdingValue = Number.isFinite(totalShares) && Number.isFinite(Number(latestPrice)) ? totalShares * Number(latestPrice) : NaN;
   const totalProfit = Number.isFinite(holdingValue) && Number.isFinite(totalAmount) && Number.isFinite(realizedProfit)
     ? (holdingValue - totalAmount) + realizedProfit
     : NaN;
   const profitRateBase = Number.isFinite(totalAmount) && Number.isFinite(realizedCost) ? totalAmount + realizedCost : NaN;
   const totalProfitRate = Number.isFinite(totalProfit) && Number.isFinite(profitRateBase) && profitRateBase > 0 ? (totalProfit / profitRateBase) * 100 : NaN;
   const holdingDays = getHoldingDays(trades, totalShares);
-  const hasBuy = Number.isFinite(Number(status.lastBuyNav));
-  const hasNav = Number.isFinite(Number(status.latestNav));
+  const hasBuy = Number.isFinite(Number(lastBuyPrice));
+  const hasNav = Number.isFinite(Number(latestPrice));
   const hasAverageCost = Number.isFinite(Number(displayAverageCost));
-  const currentMove = getCurrentMoveChip(status.lastBuyNav, status.latestNav);
+  const currentMove = getCurrentMoveChip(lastBuyPrice, latestPrice);
   const profitTone = getTrendTone(totalProfit);
   const profitRateTone = getTrendTone(totalProfitRate);
   const requiredDropTone = hasBuy && hasNav ? "down" : null;
 
-  let requiredDrop = "待填写";
-  let triggerStatus = hasBuy ? "缺昨日净值" : "缺买入记录";
+  let requiredDrop = isStock ? "不适用" : "待填写";
+  let triggerStatus = isStock ? "股票模式" : hasBuy ? "缺昨日净值" : "缺买入记录";
   let triggerTone: "muted" | "primary" | "danger" = "muted";
 
-  if (hasBuy && hasNav && status.state === "triggered") {
+  if (!isStock && hasBuy && hasNav && status.state === "triggered") {
     requiredDrop = "0.00%";
     triggerStatus = "已触发";
     triggerTone = "primary";
-  } else if (hasBuy && hasNav) {
+  } else if (!isStock && hasBuy && hasNav) {
     requiredDrop = formatPercent(status.requiredDropPercent);
     triggerStatus = "等待触发";
     triggerTone = "danger";
@@ -53,8 +57,8 @@ export function SummaryCards({ fund }: SummaryCardsProps) {
           <strong>{Number.isFinite(totalAmount) ? formatMoney(totalAmount) : "待填写"}</strong>
         </article>
         <article className="metric-card metric-card-hero">
-          <span>持有份额</span>
-          <strong>{Number.isFinite(totalShares) ? formatShares(totalShares) : "待填写"}</strong>
+          <span>{isStock ? "持有股数" : "持有份额"}</span>
+          <strong>{Number.isFinite(totalShares) ? formatUnits(totalShares, fund.assetType) : "待填写"}</strong>
         </article>
         <article className={`metric-card metric-card-hero ${profitTone === "up" ? "metric-card-positive" : profitTone === "down" ? "metric-card-negative" : ""}`}>
           <span>累计收益</span>
@@ -72,15 +76,15 @@ export function SummaryCards({ fund }: SummaryCardsProps) {
 
       <div className="summary-secondary">
         <article className="metric-card metric-card-compact">
-          <span>上次买入净值</span>
-          <strong>{hasBuy ? formatNav(status.lastBuyNav) : "待填写"}</strong>
+          <span>{isStock ? "最近成交价" : "上次买入净值"}</span>
+          <strong>{hasBuy ? formatNav(lastBuyPrice) : "待填写"}</strong>
         </article>
         <article className="metric-card metric-card-compact">
-          <span>下一触发净值</span>
-          <strong>{hasBuy ? formatNav(status.triggerNav) : "待填写"}</strong>
+          <span>{isStock ? "最新价格" : "下一触发净值"}</span>
+          <strong>{hasNav ? formatNav(isStock ? latestPrice : triggerPrice) : "待填写"}</strong>
         </article>
         <article className={`metric-card metric-card-compact ${requiredDropTone === "down" ? "metric-card-negative" : ""}`}>
-          <span>今日需达到跌幅</span>
+          <span>{isStock ? "策略提示" : "今日需达到跌幅"}</span>
           <strong>{requiredDrop}</strong>
         </article>
         <article className="metric-card metric-card-compact cost">
@@ -92,7 +96,7 @@ export function SummaryCards({ fund }: SummaryCardsProps) {
           <div className="trigger-tags">
             <span className={`status-chip ${triggerTone}`}>{triggerStatus}</span>
             {currentMove && <CurrentMoveChip move={currentMove} />}
-            {hasBuy && hasNav && <span className="status-chip neutral">触发价 {formatNav(status.triggerNav)}</span>}
+            {!isStock && hasBuy && hasNav && <span className="status-chip neutral">触发价 {formatNav(triggerPrice)}</span>}
           </div>
         </article>
       </div>

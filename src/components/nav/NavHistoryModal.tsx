@@ -18,6 +18,7 @@ interface NavHistoryModalProps {
 }
 
 export function NavHistoryModal({ fund, modal, busy, onClose, onPrev, onNext }: NavHistoryModalProps) {
+  const isStock = fund?.assetType === "stock";
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape" && modal.open) onClose();
@@ -33,8 +34,8 @@ export function NavHistoryModal({ fund, modal, busy, onClose, onPrev, onNext }: 
       <div className="modal-panel nav-history-modal">
         <div className="modal-header">
           <div>
-            <p className="eyebrow">历史净值</p>
-            <h2 id="navModalTitle">{fund.name} / 全部净值</h2>
+            <p className="eyebrow">{isStock ? "历史价格" : "历史净值"}</p>
+            <h2 id="navModalTitle">{fund.name} / 全部{isStock ? "价格" : "净值"}</h2>
           </div>
           <button className="icon-button light" type="button" aria-label="关闭" onClick={onClose}>
             ×
@@ -44,16 +45,16 @@ export function NavHistoryModal({ fund, modal, busy, onClose, onPrev, onNext }: 
           {modal.loading && (
             <div className="modal-table-loading" aria-live="polite">
               <div className="spinner small" aria-hidden="true"></div>
-              <strong>加载历史净值中...</strong>
+              <strong>{`加载历史${isStock ? "价格" : "净值"}中...`}</strong>
             </div>
           )}
           <table>
             <thead>
               <tr>
                 <th>日期</th>
-                <th>单位净值</th>
+                <th>{isStock ? "价格" : "单位净值"}</th>
                 <th>较前日</th>
-                <th>累计净值</th>
+                <th>{isStock ? "累计值" : "累计净值"}</th>
               </tr>
             </thead>
             <DataTable

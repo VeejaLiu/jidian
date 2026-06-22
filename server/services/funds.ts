@@ -10,6 +10,7 @@ export function getFundById(id: number, options: { includeHidden?: boolean; acco
         f.id,
         f.code,
         f.name,
+        f.asset_type,
         f.fund_type,
         COALESCE(uf.drop_rate, s.drop_rate, 0.04) AS drop_rate,
         CASE
@@ -36,7 +37,7 @@ export function getFundById(id: number, options: { includeHidden?: boolean; acco
 }
 
 export function mapFund(row: any, accountId: number) {
-  const navHistory = db
+  const priceHistory = db
     .prepare(
       `SELECT id, nav_date AS date, unit_nav AS nav, accumulated_nav AS accumulatedNav
        FROM nav_history
@@ -54,14 +55,18 @@ export function mapFund(row: any, accountId: number) {
     id: row.id,
     code: row.code || "",
     name: row.name,
+    assetType: row.asset_type || "fund",
     fundType: row.fund_type || "",
     dropRate: row.drop_rate ?? 0.04,
     lastNavSyncAt: row.last_nav_sync_at,
+    lastPriceSyncAt: row.last_nav_sync_at,
     status: {
       lastBuyDate: row.last_buy_date,
       lastBuyNav: row.last_buy_nav,
       latestNavDate: row.latest_nav_date,
       latestNav: row.latest_nav,
+      latestPriceDate: row.latest_nav_date,
+      latestPrice: row.latest_nav,
       triggerNav: row.trigger_nav,
       requiredDropPercent: row.required_drop_percent,
       state: row.status,
@@ -77,7 +82,8 @@ export function mapFund(row: any, accountId: number) {
       realizedCost: position.realizedCost,
       realizedProfit: position.realizedProfit,
     },
-    navHistory,
+    navHistory: priceHistory,
+    priceHistory,
     trades,
     buys,
   };
@@ -128,6 +134,10 @@ export function getPaginatedNavHistory(fundId: number, page: unknown, pageSize: 
   };
 }
 
+export function getPaginatedPriceHistory(fundId: number, page: unknown, pageSize: unknown) {
+  return getPaginatedNavHistory(fundId, page, pageSize);
+}
+
 export function getChartData(fundId: number, accountId: number) {
   const nav = db
     .prepare(
@@ -167,6 +177,7 @@ export function listFunds(accountId: number, options: { hidden?: boolean } = {})
         f.id,
         f.code,
         f.name,
+        f.asset_type,
         f.fund_type,
         COALESCE(uf.drop_rate, s.drop_rate, 0.04) AS drop_rate,
         CASE

@@ -33,9 +33,17 @@ export function FundSidebar({
     () => funds.filter((fund) => fundMatchesSearch(fund, searchValue)),
     [funds, searchValue],
   );
+  const groupedFunds = useMemo(() => {
+    const fundItems = visibleFunds.filter((fund) => fund.assetType !== "stock");
+    const stockItems = visibleFunds.filter((fund) => fund.assetType === "stock");
+    return [
+      { key: "fund", title: "基金", items: fundItems },
+      { key: "stock", title: "股票", items: stockItems },
+    ].filter((group) => group.items.length > 0);
+  }, [visibleFunds]);
 
   return (
-    <aside className="fund-panel" aria-label="基金列表">
+    <aside className="fund-panel" aria-label="资产列表">
       <div className="fund-panel-top">
         <div className="panel-header">
           <div>
@@ -69,24 +77,34 @@ export function FundSidebar({
 
       <div className="fund-list">
         {visibleFunds.length === 0 ? (
-          <p className="fund-meta">{funds.length === 0 ? "还没有基金。" : "没有匹配的基金。"}</p>
+          <p className="fund-meta">{funds.length === 0 ? "还没有资产。" : "没有匹配的资产。"}</p>
         ) : (
-          visibleFunds.map((fund) => (
-            <button
-              key={fund.id}
-              className={`fund-item${fund.id === selectedFundId ? " active" : ""}`}
-              type="button"
-              disabled={busy || addingBusy}
-              onClick={() => onSelectFund(fund.id)}
-            >
-              <span className="fund-name-row">
-                <span className="fund-name">{fund.name}</span>
-                {fund.status?.state === "triggered" && <span className="fund-warning-badge">已触发</span>}
-              </span>
-              <span className="fund-meta">
-                {[fund.code, fund.fundType].filter(Boolean).join(" / ") || "未填写代码"}
-              </span>
-            </button>
+          groupedFunds.map((group) => (
+            <section key={group.key} className="fund-group" aria-label={group.title}>
+              <div className="fund-group-header">
+                <span>{group.title}</span>
+                <small>{group.items.length}</small>
+              </div>
+              <div className="fund-group-list">
+                {group.items.map((fund) => (
+                  <button
+                    key={fund.id}
+                    className={`fund-item${fund.id === selectedFundId ? " active" : ""}`}
+                    type="button"
+                    disabled={busy || addingBusy}
+                    onClick={() => onSelectFund(fund.id)}
+                  >
+                    <span className="fund-name-row">
+                      <span className="fund-name">{fund.name}</span>
+                      {fund.status?.state === "triggered" && <span className="fund-warning-badge">已触发</span>}
+                    </span>
+                    <span className="fund-meta">
+                      {[fund.code, fund.fundType].filter(Boolean).join(" / ") || "未填写代码"}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </section>
           ))
         )}
       </div>

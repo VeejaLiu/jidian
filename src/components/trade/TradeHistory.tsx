@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { DataTable } from "../DataTable";
 import { TradeActionMenu } from "./TradeActionMenu";
 import type { Fund, TradeRecord } from "../../types/fund";
-import { formatMoney, formatNav, formatShares, tradeTypeLabel } from "../../utils/format";
+import { formatMoney, formatNav, formatUnits, tradeTypeLabel } from "../../utils/format";
 
 interface TradeHistoryProps {
   fund: Fund;
@@ -11,6 +11,7 @@ interface TradeHistoryProps {
 }
 
 export function TradeHistory({ fund, onEditTrade, onDeleteTrade }: TradeHistoryProps) {
+  const isStock = fund.assetType === "stock";
   const [page, setPage] = useState(1);
   const trades = fund.trades || fund.buys || [];
   const latestTrade = trades[0];
@@ -44,11 +45,11 @@ export function TradeHistory({ fund, onEditTrade, onDeleteTrade }: TradeHistoryP
               <th>类型</th>
               <th>状态</th>
               <th>日期</th>
-              <th>净值</th>
-              <th>较上次买入</th>
-              <th>卖出收益率</th>
-              <th>金额</th>
-              <th>份额</th>
+              <th>{isStock ? "成交价" : "净值"}</th>
+              <th>{isStock ? "较上次买入价" : "较上次买入"}</th>
+              <th>{isStock ? "卖出回报率" : "卖出收益率"}</th>
+              <th>{isStock ? "成交金额" : "金额"}</th>
+              <th>{isStock ? "股数" : "份额"}</th>
               <th>备注</th>
               <th></th>
             </tr>
@@ -73,7 +74,7 @@ export function TradeHistory({ fund, onEditTrade, onDeleteTrade }: TradeHistoryP
                 ),
               },
               { key: "date", render: (record) => record.date },
-              { key: "nav", render: (record) => (record.status === "pending" ? "待公布" : formatNav(record.nav)) },
+              { key: "nav", render: (record) => (record.status === "pending" ? (isStock ? "待同步" : "待公布") : formatNav(record.nav)) },
               {
                 key: "buyDrop",
                 render: (record) => <BuyDropCell record={record} drop={buyDropMap.get(record.id)} />,
@@ -83,7 +84,7 @@ export function TradeHistory({ fund, onEditTrade, onDeleteTrade }: TradeHistoryP
                 render: (record) => <SellReturnRateCell record={record} rate={sellReturnRateMap.get(record.id)} />,
               },
               { key: "amount", render: (record) => formatMoney(record.amount) },
-              { key: "shares", render: (record) => (record.status === "pending" ? "待确认" : formatShares(record.shares)) },
+              { key: "shares", render: (record) => (record.status === "pending" ? "待确认" : formatUnits(record.shares, fund.assetType)) },
               { key: "note", render: (record) => record.note || "" },
             ]}
             renderActions={(record) => (

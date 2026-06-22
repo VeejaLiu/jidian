@@ -28,3 +28,7 @@ export function cleanText(value: unknown) {
 export function normalizeCode(value: unknown) {
   return cleanText(value).replace(/\D/g, "");
 }
+
+export function normalizeAssetCode(value: unknown) {
+  return cleanText(value).toUpperCase().replace(/\s+/g, "");
+}

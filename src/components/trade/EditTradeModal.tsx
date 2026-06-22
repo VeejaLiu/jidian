@@ -1,24 +1,19 @@
 import { useEffect, type FormEvent } from "react";
 import { DatePicker } from "../DatePicker";
-import type { TradeRecord, TradeType } from "../../types/fund";
-
-export interface EditTradeDraft {
-  type: TradeType;
-  date: string;
-  amount: string;
-  note: string;
-}
+import type { Fund, TradeDraft, TradeRecord } from "../../types/fund";
 
 interface EditTradeModalProps {
+  fund: Fund | null;
   record: TradeRecord | null;
-  draft: EditTradeDraft;
+  draft: TradeDraft;
   busy: boolean;
-  onDraftChange: (draft: EditTradeDraft) => void;
+  onDraftChange: (draft: TradeDraft) => void;
   onClose: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }
 
 export function EditTradeModal({
+  fund,
   record,
   draft,
   busy,
@@ -35,8 +30,9 @@ export function EditTradeModal({
   }, [busy, onClose, record]);
 
   if (!record) return null;
+  const isStock = fund?.assetType === "stock";
 
-  const setDraftField = (field: keyof EditTradeDraft, value: string) => {
+  const setDraftField = (field: keyof TradeDraft, value: string) => {
     onDraftChange({ ...draft, [field]: value });
   };
 
@@ -79,6 +75,20 @@ export function EditTradeModal({
             <span>日期</span>
             <DatePicker value={draft.date} disabled={busy} onChange={(value) => setDraftField("date", value)} />
           </label>
+          {isStock ? (
+            <label>
+              <span>{draft.type === "sell" ? "卖出价格" : "买入价格"}</span>
+              <input
+                type="number"
+                min="0"
+                step="0.0001"
+                value={draft.price}
+                onChange={(event) => setDraftField("price", event.target.value)}
+                disabled={busy}
+                required
+              />
+            </label>
+          ) : (
           <label>
             <span>{draft.type === "sell" ? "卖出金额" : "买入金额"}</span>
             <input
@@ -91,7 +101,40 @@ export function EditTradeModal({
               required
             />
           </label>
+          )}
         </div>
+
+        {isStock && (
+          <div className="form-row compact">
+            <label>
+              <span>{draft.type === "sell" ? "卖出股数" : "买入股数"}</span>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={draft.shares}
+                onChange={(event) => setDraftField("shares", event.target.value)}
+                disabled={busy}
+                required
+              />
+            </label>
+            <label>
+              <span>税费</span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={draft.fee}
+                onChange={(event) => setDraftField("fee", event.target.value)}
+                disabled={busy}
+              />
+            </label>
+            <label>
+              <span>成交金额</span>
+              <input type="number" value={draft.amount} disabled readOnly />
+            </label>
+          </div>
+        )}
 
         <label>
           <span>备注</span>
@@ -102,7 +145,7 @@ export function EditTradeModal({
           />
         </label>
         <p className="form-help">
-          若所选日期的净值尚未公布，保存后会先显示为待确认。
+          {isStock ? "股票交易按成交价、股数和税费保存，金额会自动计算并计入成本。" : "若所选日期的净值尚未公布，保存后会先显示为待确认。"}
         </p>
 
         <div className="modal-actions">

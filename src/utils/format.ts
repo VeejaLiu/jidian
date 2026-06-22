@@ -39,6 +39,12 @@ export function formatShares(value: unknown) {
   return Number.isFinite(number) ? number.toFixed(2) : "--";
 }
 
+export function formatUnits(value: unknown, assetType?: string | null) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "--";
+  return assetType === "stock" ? number.toFixed(0) : number.toFixed(2);
+}
+
 export function tradeTypeLabel(type?: TradeType | string | null) {
   return type === "sell" ? "卖出" : "买入";
 }

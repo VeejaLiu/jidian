@@ -35,7 +35,7 @@ export function FundActionModal({
 
   if (!action) return null;
 
-  const meta = getActionMeta(action, fund.name);
+  const meta = getActionMeta(action, fund.name, fund.assetType);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -105,7 +105,9 @@ export function FundActionModal({
   );
 }
 
-function getActionMeta(action: FundAction, fundName: string) {
+function getActionMeta(action: FundAction, fundName: string, assetType: Fund["assetType"]) {
+  const isStock = assetType === "stock";
+
   if (action === "dropRate") {
     return {
       eyebrow: "定投策略",
@@ -121,11 +123,13 @@ function getActionMeta(action: FundAction, fundName: string) {
 
   if (action === "syncNav") {
     return {
-      eyebrow: "净值同步",
-      title: "更新净值",
-      summary: `立即同步「${fundName}」的净值`,
-      description: "系统会从公开数据源拉取最新净值，并尝试确认待确认交易。",
-      confirmLabel: "开始更新",
+      eyebrow: isStock ? "价格同步" : "净值同步",
+      title: isStock ? "同步价格" : "更新净值",
+      summary: `立即同步「${fundName}」的${isStock ? "价格" : "净值"}`,
+      description: isStock
+        ? "系统会从公开数据源拉取这只股票的历史价格，并刷新走势图与持仓估值。"
+        : "系统会从公开数据源拉取最新净值，并尝试确认待确认交易。",
+      confirmLabel: isStock ? "开始同步" : "开始更新",
       busyLabel: "更新中...",
       mark: "↻",
       tone: "primary",
@@ -133,10 +137,10 @@ function getActionMeta(action: FundAction, fundName: string) {
   }
 
   return {
-    eyebrow: "基金管理",
-    title: "隐藏基金",
+    eyebrow: "资产管理",
+    title: "隐藏资产",
     summary: `从列表中隐藏「${fundName}」`,
-    description: "隐藏后不会删除交易记录、持仓数据或历史净值，你可以在隐藏基金列表中恢复显示。",
+    description: "隐藏后不会删除交易记录、持仓数据或历史价格，你可以在隐藏列表中恢复显示。",
     confirmLabel: "确认隐藏",
     busyLabel: "隐藏中...",
     mark: "!",

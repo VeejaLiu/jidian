@@ -1,4 +1,5 @@
 export type TradeType = "buy" | "sell";
+export type AssetType = "fund" | "stock";
 
 export interface UserAccount {
   id: number;
@@ -9,6 +10,7 @@ export interface NavPoint {
   id?: number;
   date: string;
   nav: number;
+  price?: number;
   accumulatedNav?: number | null;
   previousNav?: number | null;
   dailyChangePercent?: number | null;
@@ -20,10 +22,21 @@ export interface TradeRecord {
   date: string;
   nav: number | null;
   amount: number;
+  fee?: number | null;
   shares: number | null;
   status?: "pending" | "confirmed";
   note?: string | null;
   sellReturnRate?: number | null;
+}
+
+export interface TradeDraft {
+  type: TradeType;
+  date: string;
+  amount: string;
+  price: string;
+  shares: string;
+  fee: string;
+  note: string;
 }
 
 export interface FundPosition {
@@ -41,9 +54,13 @@ export interface FundPosition {
 export interface FundStatus {
   lastBuyDate?: string | null;
   lastBuyNav?: number | null;
+  lastBuyPrice?: number | null;
   latestNavDate?: string | null;
   latestNav?: number | null;
+  latestPriceDate?: string | null;
+  latestPrice?: number | null;
   triggerNav?: number | null;
+  triggerPrice?: number | null;
   requiredDropPercent?: number | null;
   state?: string | null;
 }
@@ -52,18 +69,28 @@ export interface Fund {
   id: number;
   code?: string | null;
   name: string;
+  assetType?: AssetType | null;
   fundType?: string | null;
   dropRate?: number | null;
   lastNavSyncAt?: string | null;
+  lastPriceSyncAt?: string | null;
   status?: FundStatus;
   position?: FundPosition;
   navHistory?: NavPoint[];
+  priceHistory?: NavPoint[];
   trades?: TradeRecord[];
   buys?: TradeRecord[];
 }
 
+export interface AssetDraft {
+  assetType: AssetType;
+  code: string;
+  name: string;
+}
+
 export interface ChartData {
   nav: NavPoint[];
+  prices?: NavPoint[];
   trades: TradeRecord[];
   buys?: TradeRecord[];
   position: FundPosition | null;

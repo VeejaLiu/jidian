@@ -17,6 +17,9 @@ interface WorkspaceProps {
   tradeType: TradeType;
   tradeDate: string;
   tradeAmount: string;
+  tradePrice: string;
+  tradeShares: string;
+  tradeFee: string;
   tradeNote: string;
   onHideFund: () => boolean | Promise<boolean>;
   onSyncNav: () => boolean | Promise<boolean>;
@@ -27,6 +30,9 @@ interface WorkspaceProps {
   onTradeTypeChange: (type: TradeType) => void;
   onTradeDateChange: (value: string) => void;
   onTradeAmountChange: (value: string) => void;
+  onTradePriceChange: (value: string) => void;
+  onTradeSharesChange: (value: string) => void;
+  onTradeFeeChange: (value: string) => void;
   onTradeNoteChange: (value: string) => void;
   onEditTrade: (record: TradeRecord) => void;
   onDeleteTrade: (record: TradeRecord) => void;
@@ -42,6 +48,9 @@ export function Workspace({
   tradeType,
   tradeDate,
   tradeAmount,
+  tradePrice,
+  tradeShares,
+  tradeFee,
   tradeNote,
   onHideFund,
   onSyncNav,
@@ -52,6 +61,9 @@ export function Workspace({
   onTradeTypeChange,
   onTradeDateChange,
   onTradeAmountChange,
+  onTradePriceChange,
+  onTradeSharesChange,
+  onTradeFeeChange,
   onTradeNoteChange,
   onEditTrade,
   onDeleteTrade,
@@ -79,21 +91,21 @@ export function Workspace({
 
       {!fund ? (
         <div className="empty-state">
-          <h2>先添加一只基金</h2>
-          <p>输入基金代码后会自动同步历史净值。添加交易后，这里会算出今日需要下跌多少才买入一份。</p>
+          <h2>先添加基金，或导入股票交易</h2>
+          <p>基金支持自动同步历史净值；股票支持批量导入买卖记录并计算持仓、成本和已实现盈亏。</p>
         </div>
       ) : (
         <div className="fund-workspace">
           <header className="workspace-header">
             <div>
-              <p className="eyebrow">{[fund.code, fund.fundType].filter(Boolean).join(" / ") || "未填写代码"}</p>
+              <p className="eyebrow">{[fund.assetType === "stock" ? "股票" : "基金", fund.code, fund.fundType].filter(Boolean).join(" / ") || "未填写代码"}</p>
               <h2>{fund.name}</h2>
               <div className="fund-header-meta" aria-label="净值更新状态">
-                <span>最新净值 {fund.status?.latestNavDate || "--"} / {formatNav(fund.status?.latestNav)}</span>
-                <span>上次更新 {formatDateTime(fund.lastNavSyncAt)}</span>
+                <span>{fund.assetType === "stock" ? "最新价格" : "最新净值"} {fund.status?.latestPriceDate || fund.status?.latestNavDate || "--"} / {formatNav(fund.status?.latestPrice ?? fund.status?.latestNav)}</span>
+                <span>上次更新 {formatDateTime(fund.lastPriceSyncAt || fund.lastNavSyncAt)}</span>
               </div>
             </div>
-            <FundActionMenu busy={busy} onSelect={openFundAction} />
+            <FundActionMenu fund={fund} busy={busy} onSelect={openFundAction} />
           </header>
 
           <FundActionModal
@@ -122,10 +134,16 @@ export function Workspace({
             tradeType={tradeType}
             tradeDate={tradeDate}
             tradeAmount={tradeAmount}
+            tradePrice={tradePrice}
+            tradeShares={tradeShares}
+            tradeFee={tradeFee}
             tradeNote={tradeNote}
             onTypeChange={onTradeTypeChange}
             onDateChange={onTradeDateChange}
             onAmountChange={onTradeAmountChange}
+            onPriceChange={onTradePriceChange}
+            onSharesChange={onTradeSharesChange}
+            onFeeChange={onTradeFeeChange}
             onNoteChange={onTradeNoteChange}
             onSubmit={onSubmitTrade}
             onEditTrade={onEditTrade}

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { db } from "../db/database";
 import { getFundById, mapFund } from "../services/funds";
+import { importTradesFromText } from "../services/imports";
 import { assertTradeTimeline, buildTradeInput } from "../services/trades";
 import { getAccountIdFromRequest } from "../services/accounts";
 
@@ -14,8 +15,8 @@ function createTradeRecord(req: any, res: any, next: any, forcedType: "buy" | nu
     assertTradeTimeline(fundId, accountId, trade);
 
     db.prepare(
-      `INSERT INTO trade_records (account_id, fund_id, trade_type, trade_date, trade_nav, amount, shares, status, note, confirmed_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO trade_records (account_id, fund_id, trade_type, trade_date, trade_nav, amount, fee, shares, status, note, confirmed_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     ).run(
       accountId,
       fundId,
@@ -23,6 +24,7 @@ function createTradeRecord(req: any, res: any, next: any, forcedType: "buy" | nu
       trade.date,
       trade.nav,
       trade.amount,
+      trade.fee || 0,
       trade.shares,
       trade.status,
       trade.note,
@@ -41,6 +43,16 @@ tradeRoutes.post("/api/funds/:id/trades", (req, res, next) => {
 
 tradeRoutes.post("/api/funds/:id/buys", (req, res, next) => {
   createTradeRecord(req, res, next, "buy");
+});
+
+tradeRoutes.post("/api/trades/import", (req, res, next) => {
+  try {
+    const accountId = getAccountIdFromRequest(req);
+    const payload = importTradesFromText(String(req.body?.text || ""), accountId);
+    res.status(201).json(payload);
+  } catch (error) {
+    next(error);
+  }
 });
 
 tradeRoutes.put("/api/trades/:id", (req, res, next) => {
@@ -62,13 +74,14 @@ tradeRoutes.put("/api/trades/:id", (req, res, next) => {
     const updateTrade = db.transaction(() => {
       db.prepare(
         `UPDATE trade_records
-         SET trade_type = ?, trade_date = ?, trade_nav = ?, amount = ?, shares = ?, status = ?, note = ?, confirmed_at = ?
+         SET trade_type = ?, trade_date = ?, trade_nav = ?, amount = ?, fee = ?, shares = ?, status = ?, note = ?, confirmed_at = ?
          WHERE id = ?`,
       ).run(
         trade.type,
         trade.date,
         trade.nav,
         trade.amount,
+        trade.fee || 0,
         trade.shares,
         trade.status,
         trade.note,

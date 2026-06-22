@@ -1,0 +1,20 @@
+services:
+  jidian:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: jidian
+    ports:
+      - "4173:4173"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - NODE_ENV=production
+      - PORT=4173
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:4173"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

@@ -4,11 +4,11 @@ import { AddFundModal } from "./components/fund/AddFundModal";
 import { FundSidebar } from "./components/fund/FundSidebar";
 import { HiddenFundsModal } from "./components/fund/HiddenFundsModal";
 import { NavHistoryModal, type NavModalState } from "./components/nav/NavHistoryModal";
-import { EditTradeModal, type EditTradeDraft } from "./components/trade/EditTradeModal";
+import { EditTradeModal } from "./components/trade/EditTradeModal";
 import { Workspace } from "./components/Workspace";
 import { api } from "./api/client";
 import { DEFAULT_BUSY_LABEL, MIN_NAV_MODAL_LOADING_MS } from "./constants/app";
-import type { ChartData, Fund, NavHistoryPage, TradeRecord, TradeType, UserAccount } from "./types/fund";
+import type { AssetDraft, ChartData, Fund, NavHistoryPage, TradeDraft, TradeRecord, TradeType, UserAccount } from "./types/fund";
 import { todayISO } from "./utils/date";
 import { formatMoney, formatShares, tradeTypeLabel } from "./utils/format";
 
@@ -23,7 +23,11 @@ export function App() {
   const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
   const [selectedFundId, setSelectedFundId] = useState<number | null>(null);
   const [busy, setBusy] = useState<BusyState>({ active: false, label: DEFAULT_BUSY_LABEL });
-  const [fundCode, setFundCode] = useState("");
+  const [assetDraft, setAssetDraft] = useState<AssetDraft>({
+    assetType: "fund",
+    code: "",
+    name: "",
+  });
   const [fundSearch, setFundSearch] = useState("");
   const [dropRateDraft, setDropRateDraft] = useState("");
   const [accountModalOpen, setAccountModalOpen] = useState(false);
@@ -35,12 +39,18 @@ export function App() {
   const [tradeType, setTradeType] = useState<TradeType>("buy");
   const [tradeDate, setTradeDate] = useState(todayISO());
   const [tradeAmount, setTradeAmount] = useState("");
+  const [tradePrice, setTradePrice] = useState("");
+  const [tradeShares, setTradeShares] = useState("");
+  const [tradeFee, setTradeFee] = useState("");
   const [tradeNote, setTradeNote] = useState("");
   const [editingTrade, setEditingTrade] = useState<TradeRecord | null>(null);
-  const [editTradeDraft, setEditTradeDraft] = useState<EditTradeDraft>({
+  const [editTradeDraft, setEditTradeDraft] = useState<TradeDraft>({
     type: "buy",
     date: todayISO(),
     amount: "",
+    price: "",
+    shares: "",
+    fee: "",
     note: "",
   });
   const [chartData, setChartData] = useState<ChartData>({ nav: [], trades: [], position: null });
@@ -68,6 +78,36 @@ export function App() {
     () => accounts.find((account) => account.id === selectedAccountId) || null,
     [accounts, selectedAccountId],
   );
+  const isStock = selectedFund?.assetType === "stock";
+
+  useEffect(() => {
+    if (!isStock) return;
+    const price = Number(tradePrice);
+    const shares = Number(tradeShares);
+    const fee = Number(tradeFee || 0);
+    if (!Number.isFinite(price) || price <= 0 || !Number.isFinite(shares) || shares <= 0 || !Number.isFinite(fee) || fee < 0) {
+      setTradeAmount("");
+      return;
+    }
+    const gross = price * shares;
+    const nextAmount = tradeType === "buy" ? gross + fee : gross - fee;
+    setTradeAmount(nextAmount > 0 ? nextAmount.toFixed(2) : "");
+  }, [isStock, tradeFee, tradePrice, tradeShares, tradeType]);
+
+  useEffect(() => {
+    if (!editingTrade || selectedFund?.assetType !== "stock") return;
+    const price = Number(editTradeDraft.price);
+    const shares = Number(editTradeDraft.shares);
+    const fee = Number(editTradeDraft.fee || 0);
+    if (!Number.isFinite(price) || price <= 0 || !Number.isFinite(shares) || shares <= 0 || !Number.isFinite(fee) || fee < 0) {
+      setEditTradeDraft((current) => ({ ...current, amount: "" }));
+      return;
+    }
+    const gross = price * shares;
+    const nextAmountValue = editTradeDraft.type === "buy" ? gross + fee : gross - fee;
+    const nextAmount = nextAmountValue > 0 ? nextAmountValue.toFixed(2) : "";
+    setEditTradeDraft((current) => (current.amount === nextAmount ? current : { ...current, amount: nextAmount }));
+  }, [editTradeDraft.fee, editTradeDraft.price, editTradeDraft.shares, editTradeDraft.type, editingTrade, selectedFund?.assetType]);
 
   useEffect(() => {
     if (!selectedFund) {
@@ -111,7 +151,7 @@ export function App() {
       setSelectedFundId(null);
       return [];
     }
-    const payload = await api<{ funds: Fund[] }>(`/api/funds?${accountQuery()}`);
+    const payload = await api<{ funds: Fund[] }>(`/api/assets?${accountQuery()}`);
     const nextFunds = payload.funds || [];
     setFunds(nextFunds);
     setSelectedFundId((currentId) => {
@@ -127,7 +167,7 @@ export function App() {
     try {
       const params = new URLSearchParams({ page: String(page), pageSize: "20" });
       const [payload] = await Promise.all([
-        api<NavHistoryPage>(`/api/funds/${fundId}/nav?${params.toString()}`),
+        api<NavHistoryPage>(`/api/assets/${fundId}/prices?${params.toString()}`),
         new Promise((resolve) => window.setTimeout(resolve, MIN_NAV_MODAL_LOADING_MS)),
       ]);
       setNavModal((current) => ({
@@ -149,7 +189,7 @@ export function App() {
     if (!selectedAccountId) return;
     setHiddenFundsLoading(true);
     try {
-      const payload = await api<{ funds: Fund[] }>(`/api/hidden-funds?${accountQuery()}`);
+      const payload = await api<{ funds: Fund[] }>(`/api/hidden-assets?${accountQuery()}`);
       setHiddenFunds(payload.funds || []);
     } catch (error) {
       window.alert(error instanceof Error ? error.message : "操作失败");
@@ -193,10 +233,10 @@ export function App() {
       setChartLoading(true);
       setChartData({ nav: [], trades: [], position: null });
       try {
-        const payload = await api<ChartData>(`/api/funds/${selectedFundId}/chart?${accountQuery()}`);
+        const payload = await api<ChartData>(`/api/assets/${selectedFundId}/chart?${accountQuery()}`);
         if (!cancelled) {
           setChartData({
-            nav: payload.nav || [],
+            nav: payload.prices || payload.nav || [],
             trades: payload.trades || payload.buys || [],
             position: payload.position || null,
           });
@@ -219,19 +259,25 @@ export function App() {
 
   const handleAddFund = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const code = fundCode.trim();
-    if (!code || addingFundBusy) return;
+    const code = assetDraft.code.trim();
+    const name = assetDraft.name.trim();
+    if ((!code && !name) || addingFundBusy) return;
 
     async function addFund() {
       setAddingFundBusy(true);
       try {
-        const payload = await api<{ fund: Fund }>("/api/funds", {
+        const payload = await api<{ fund: Fund }>("/api/assets", {
           method: "POST",
-          body: JSON.stringify({ code, accountId: selectedAccountId }),
+          body: JSON.stringify({
+            code,
+            name,
+            assetType: assetDraft.assetType,
+            accountId: selectedAccountId,
+          }),
         });
         const fundId = payload.fund.id;
         setSelectedFundId(fundId);
-        setFundCode("");
+        setAssetDraft({ assetType: "fund", code: "", name: "" });
         setAddFundModalOpen(false);
 
         await loadFunds({ preferredId: fundId });
@@ -303,7 +349,7 @@ export function App() {
 
   const handleCloseAddFund = () => {
     if (addingFundBusy) return;
-    setFundCode("");
+    setAssetDraft({ assetType: "fund", code: "", name: "" });
     setAddFundModalOpen(false);
   };
 
@@ -329,10 +375,16 @@ export function App() {
           type: tradeType,
           date: tradeDate,
           amount: tradeAmount,
+          nav: isStock ? tradePrice : undefined,
+          shares: isStock ? tradeShares : undefined,
+          fee: isStock ? tradeFee : undefined,
           note: tradeNote.trim(),
         }),
       });
       setTradeAmount("");
+      setTradePrice("");
+      setTradeShares("");
+      setTradeFee("");
       setTradeNote("");
       await loadFunds({ preferredId: selectedFund.id });
       setChartRefreshKey((key) => key + 1);
@@ -341,10 +393,11 @@ export function App() {
 
   const handleSyncNav = async () => {
     if (!selectedFund) return false;
+    const isStock = selectedFund.assetType === "stock";
 
-    const result = await runWithBusy("更新净值中...", async () => {
+    const result = await runWithBusy(isStock ? "更新价格中..." : "更新净值中...", async () => {
       const payload = await api<{ fund: Fund; sync?: { imported?: number; confirmedTrades?: number } }>(
-        `/api/funds/${selectedFund.id}/sync-nav`,
+        isStock ? `/api/assets/${selectedFund.id}/sync-price` : `/api/funds/${selectedFund.id}/sync-nav`,
         {
           method: "POST",
           body: JSON.stringify({ accountId: selectedAccountId, fullHistory: false }),
@@ -397,6 +450,9 @@ export function App() {
       type: record.type,
       date: record.date,
       amount: String(record.amount ?? ""),
+      price: String(record.nav ?? ""),
+      shares: String(record.shares ?? ""),
+      fee: String(record.fee ?? ""),
       note: record.note || "",
     });
   };
@@ -417,6 +473,9 @@ export function App() {
           type: editTradeDraft.type,
           date: editTradeDraft.date,
           amount: editTradeDraft.amount,
+          nav: selectedFund?.assetType === "stock" ? editTradeDraft.price : undefined,
+          shares: selectedFund?.assetType === "stock" ? editTradeDraft.shares : undefined,
+          fee: selectedFund?.assetType === "stock" ? editTradeDraft.fee : undefined,
           note: editTradeDraft.note.trim(),
         }),
       });
@@ -445,7 +504,7 @@ export function App() {
     if (!selectedFund) return false;
 
     const result = await runWithBusy("隐藏中...", async () => {
-      await api(`/api/funds/${selectedFund.id}?${accountQuery()}`, { method: "DELETE" });
+      await api(`/api/assets/${selectedFund.id}?${accountQuery()}`, { method: "DELETE" });
       await loadFunds({ keepSelection: false });
       setNavModal((current) => ({ ...current, open: false }));
       setChartRefreshKey((key) => key + 1);
@@ -456,7 +515,7 @@ export function App() {
 
   const handleRestoreFund = (fund: Fund) => {
     runWithBusy("恢复中...", async () => {
-      await api(`/api/funds/${fund.id}/restore?${accountQuery()}`, { method: "POST" });
+      await api(`/api/assets/${fund.id}/restore?${accountQuery()}`, { method: "POST" });
       await loadFunds({ preferredId: fund.id });
       await loadHiddenFunds();
       setHiddenFundsModalOpen(false);
@@ -508,6 +567,9 @@ export function App() {
           tradeType={tradeType}
           tradeDate={tradeDate}
           tradeAmount={tradeAmount}
+          tradePrice={tradePrice}
+          tradeShares={tradeShares}
+          tradeFee={tradeFee}
           tradeNote={tradeNote}
           onHideFund={handleHideFund}
           onSyncNav={handleSyncNav}
@@ -518,6 +580,9 @@ export function App() {
           onTradeTypeChange={setTradeType}
           onTradeDateChange={setTradeDate}
           onTradeAmountChange={setTradeAmount}
+          onTradePriceChange={setTradePrice}
+          onTradeSharesChange={setTradeShares}
+          onTradeFeeChange={setTradeFee}
           onTradeNoteChange={setTradeNote}
           onEditTrade={handleEditTrade}
           onDeleteTrade={handleDeleteTrade}
@@ -544,9 +609,9 @@ export function App() {
       />
       <AddFundModal
         open={addFundModalOpen}
-        fundCode={fundCode}
+        draft={assetDraft}
         busy={addingFundBusy}
-        onFundCodeChange={setFundCode}
+        onDraftChange={setAssetDraft}
         onSubmit={handleAddFund}
         onClose={handleCloseAddFund}
       />
@@ -559,6 +624,7 @@ export function App() {
         onRestore={handleRestoreFund}
       />
       <EditTradeModal
+        fund={selectedFund}
         record={editingTrade}
         draft={editTradeDraft}
         busy={busy.active}

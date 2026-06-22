@@ -1,0 +1,55 @@
+# Node modules
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# 构建输出
+dist/
+build/
+
+# 数据文件（这些会在容器中创建）
+data/*
+!data/.gitkeep
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.db
+*.db-shm
+*.db-wal
+
+# 环境变量
+.env
+.env.*
+
+# 日志文件
+*.log
+
+# 系统文件
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Docker文件
+Dockerfile
+.dockerignore
+docker-compose.yml
+
+# 文档
+README.md
+doc/
+
+# 测试文件
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+__tests__/
+coverage/

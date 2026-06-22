@@ -286,6 +286,37 @@ button:disabled {
   background: rgba(137, 210, 205, 0.58);
 }
 
+.fund-group {
+  display: grid;
+  gap: 10px;
+}
+
+.fund-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 2px;
+  color: #d9eeec;
+}
+
+.fund-group-header span {
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.fund-group-header small {
+  color: #9cb6bc;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.fund-group-list {
+  display: grid;
+  gap: 10px;
+}
+
 .fund-item {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -312,6 +343,11 @@ button:disabled {
   text-align: center;
 }
 
+.panel-bottom-actions {
+  display: grid;
+  gap: 10px;
+}
+
 .add-fund-trigger .plus-mark {
   color: #d9fbf8;
   font-size: 2rem;
@@ -333,6 +369,14 @@ button:disabled {
 .sidebar-text-button:hover {
   background: rgba(255, 255, 255, 0.08);
   color: #ffffff;
+}
+
+.import-trigger {
+  justify-content: center;
+  min-height: 40px;
+  border: 1px dashed rgba(137, 210, 205, 0.24);
+  background: rgba(255, 255, 255, 0.05);
+  color: #d7f5f2;
 }
 
 .fund-name {
