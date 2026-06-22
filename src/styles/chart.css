@@ -119,11 +119,11 @@
 }
 
 .chart-tooltip-dot.buy {
-  background: var(--up);
+  background: var(--trade-buy);
 }
 
 .chart-tooltip-dot.sell {
-  background: var(--down-strong);
+  background: var(--trade-sell);
 }
 
 .chart-tooltip-line-sample {
@@ -185,11 +185,11 @@
 }
 
 .chart-tooltip-row strong.buy {
-  color: var(--up);
+  color: var(--trade-buy);
 }
 
 .chart-tooltip-row strong.sell {
-  color: var(--down-strong);
+  color: var(--trade-sell);
 }
 
 .chart-tooltip-row strong.cost {
@@ -208,21 +208,21 @@
 }
 
 .chart-tooltip-trade-card.buy {
-  background: var(--up-soft);
-  border-color: rgba(229, 57, 53, 0.2);
+  background: var(--trade-buy-soft);
+  border-color: rgba(37, 99, 235, 0.22);
 }
 
 .chart-tooltip-trade-card.sell {
-  background: var(--down-soft);
-  border-color: rgba(27, 143, 90, 0.2);
+  background: var(--trade-sell-soft);
+  border-color: rgba(245, 158, 11, 0.24);
 }
 
 .chart-tooltip-trade-card.buy .chart-tooltip-trade-title strong {
-  color: var(--up);
+  color: var(--trade-buy);
 }
 
 .chart-tooltip-trade-card.sell .chart-tooltip-trade-title strong {
-  color: var(--down-strong);
+  color: var(--trade-sell);
 }
 
 .chart-tooltip-note {

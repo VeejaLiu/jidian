@@ -12,8 +12,8 @@ app.use(express.json({ limit: "2mb" }));
 
 migrateAccounts();
 migrateAssetTypes();
-migrateTradeFees();
 migrateTradeRecordsForPendingStatus();
+migrateTradeFees();
 
 app.use(accountRoutes);
 app.use(fundRoutes);

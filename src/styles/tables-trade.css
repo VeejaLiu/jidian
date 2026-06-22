@@ -133,13 +133,13 @@ tr:last-child td {
 }
 
 .trade-badge.buy {
-  background: var(--up-soft);
-  color: var(--up);
+  background: var(--trade-buy-soft);
+  color: var(--trade-buy);
 }
 
 .trade-badge.sell {
-  background: var(--down-soft);
-  color: var(--down-strong);
+  background: var(--trade-sell-soft);
+  color: var(--trade-sell);
 }
 
 .trade-status {

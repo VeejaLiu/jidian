@@ -36,6 +36,7 @@ export function App() {
   const [hiddenFundsModalOpen, setHiddenFundsModalOpen] = useState(false);
   const [hiddenFunds, setHiddenFunds] = useState<Fund[]>([]);
   const [hiddenFundsLoading, setHiddenFundsLoading] = useState(false);
+  const [previewFund, setPreviewFund] = useState<Fund | null>(null);
   const [tradeType, setTradeType] = useState<TradeType>("buy");
   const [tradeDate, setTradeDate] = useState(todayISO());
   const [tradeAmount, setTradeAmount] = useState("");
@@ -66,10 +67,12 @@ export function App() {
     loading: false,
   });
 
-  const selectedFund = useMemo(
+  const selectedVisibleFund = useMemo(
     () => funds.find((fund) => fund.id === selectedFundId) || null,
     [funds, selectedFundId],
   );
+  const selectedFund = previewFund || selectedVisibleFund;
+  const previewingHiddenFund = Boolean(previewFund);
   const hasPendingTrades = useMemo(
     () => Boolean(selectedFund?.trades?.some((trade) => trade.status === "pending")),
     [selectedFund],
@@ -190,7 +193,9 @@ export function App() {
     setHiddenFundsLoading(true);
     try {
       const payload = await api<{ funds: Fund[] }>(`/api/hidden-assets?${accountQuery()}`);
-      setHiddenFunds(payload.funds || []);
+      const nextFunds = payload.funds || [];
+      setHiddenFunds(nextFunds);
+      return nextFunds;
     } catch (error) {
       window.alert(error instanceof Error ? error.message : "操作失败");
     } finally {
@@ -198,12 +203,20 @@ export function App() {
     }
   }, [accountQuery, selectedAccountId]);
 
+  const syncPreviewFund = useCallback(async (fundId: number) => {
+    const nextHiddenFunds = await loadHiddenFunds();
+    const nextPreviewFund = nextHiddenFunds?.find((fund) => fund.id === fundId) || null;
+    setPreviewFund(nextPreviewFund);
+    return nextPreviewFund;
+  }, [loadHiddenFunds]);
+
   useEffect(() => {
     runWithBusy("加载中...", loadAccounts);
   }, [loadAccounts, runWithBusy]);
 
   useEffect(() => {
     if (!selectedAccountId) return;
+    setPreviewFund(null);
     runWithBusy("加载中...", () => loadFunds({ keepSelection: false }));
   }, [loadFunds, runWithBusy, selectedAccountId]);
 
@@ -225,7 +238,7 @@ export function App() {
     let cancelled = false;
 
     async function loadChart() {
-      if (!selectedFundId) {
+      if (!selectedFund?.id) {
         setChartData({ nav: [], trades: [], position: null });
         return;
       }
@@ -233,7 +246,7 @@ export function App() {
       setChartLoading(true);
       setChartData({ nav: [], trades: [], position: null });
       try {
-        const payload = await api<ChartData>(`/api/assets/${selectedFundId}/chart?${accountQuery()}`);
+        const payload = await api<ChartData>(`/api/assets/${selectedFund.id}/chart?${accountQuery()}`);
         if (!cancelled) {
           setChartData({
             nav: payload.prices || payload.nav || [],
@@ -255,7 +268,7 @@ export function App() {
     return () => {
       cancelled = true;
     };
-  }, [accountQuery, selectedFundId, chartRefreshKey]);
+  }, [accountQuery, chartRefreshKey, selectedFund?.id]);
 
   const handleAddFund = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -337,6 +350,7 @@ export function App() {
     setSelectedAccountId(accountId);
     setFunds([]);
     setSelectedFundId(null);
+    setPreviewFund(null);
     setFundSearch("");
     setHiddenFunds([]);
     setAccountModalOpen(false);
@@ -363,6 +377,12 @@ export function App() {
     setHiddenFundsModalOpen(false);
   };
 
+  const handlePreviewHiddenFund = (fund: Fund) => {
+    setPreviewFund(fund);
+    setHiddenFundsModalOpen(false);
+    setChartRefreshKey((key) => key + 1);
+  };
+
   const handleSubmitTrade = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!selectedFund) return;
@@ -386,7 +406,11 @@ export function App() {
       setTradeShares("");
       setTradeFee("");
       setTradeNote("");
-      await loadFunds({ preferredId: selectedFund.id });
+      if (previewingHiddenFund) {
+        await syncPreviewFund(selectedFund.id);
+      } else {
+        await loadFunds({ preferredId: selectedFund.id });
+      }
       setChartRefreshKey((key) => key + 1);
     });
   };
@@ -403,7 +427,12 @@ export function App() {
           body: JSON.stringify({ accountId: selectedAccountId, fullHistory: false }),
         },
       );
-      await loadFunds({ preferredId: payload.fund?.id || selectedFund.id });
+      if (previewingHiddenFund) {
+        setPreviewFund(payload.fund || null);
+        await syncPreviewFund(payload.fund?.id || selectedFund.id);
+      } else {
+        await loadFunds({ preferredId: payload.fund?.id || selectedFund.id });
+      }
       setChartRefreshKey((key) => key + 1);
       return true;
     });
@@ -428,7 +457,11 @@ export function App() {
         method: "PATCH",
         body: JSON.stringify({ accountId: selectedAccountId, dropRatePercent: value }),
       });
-      await loadFunds({ preferredId: selectedFund.id });
+      if (previewingHiddenFund) {
+        await syncPreviewFund(selectedFund.id);
+      } else {
+        await loadFunds({ preferredId: selectedFund.id });
+      }
       setChartRefreshKey((key) => key + 1);
       return true;
     });
@@ -480,7 +513,11 @@ export function App() {
         }),
       });
       setEditingTrade(null);
-      await loadFunds({ preferredId: selectedFund.id });
+      if (previewingHiddenFund) {
+        await syncPreviewFund(selectedFund.id);
+      } else {
+        await loadFunds({ preferredId: selectedFund.id });
+      }
       setChartRefreshKey((key) => key + 1);
     });
   };
@@ -488,14 +525,19 @@ export function App() {
   const handleDeleteTrade = (record: TradeRecord) => {
     if (!selectedFund) return;
     const label = tradeTypeLabel(record.type);
+    const unitsLabel = selectedFund.assetType === "stock" ? "股数" : "份额";
     const confirmed = window.confirm(
-      `确定删除这条${label}记录吗？\n日期：${record.date}\n金额：${formatMoney(record.amount)}\n份额：${formatShares(record.shares)}`,
+      `确定删除这条${label}记录吗？\n日期：${record.date}\n金额：${formatMoney(record.amount)}\n${unitsLabel}：${formatShares(record.shares)}`,
     );
     if (!confirmed) return;
 
     runWithBusy("删除中...", async () => {
       await api(`/api/trades/${record.id}`, { method: "DELETE" });
-      await loadFunds({ preferredId: selectedFund.id });
+      if (previewingHiddenFund) {
+        await syncPreviewFund(selectedFund.id);
+      } else {
+        await loadFunds({ preferredId: selectedFund.id });
+      }
       setChartRefreshKey((key) => key + 1);
     });
   };
@@ -505,6 +547,9 @@ export function App() {
 
     const result = await runWithBusy("隐藏中...", async () => {
       await api(`/api/assets/${selectedFund.id}?${accountQuery()}`, { method: "DELETE" });
+      const nextHiddenFunds = await loadHiddenFunds();
+      const nextPreviewFund = nextHiddenFunds?.find((fund) => fund.id === selectedFund.id) || selectedFund;
+      setPreviewFund(nextPreviewFund);
       await loadFunds({ keepSelection: false });
       setNavModal((current) => ({ ...current, open: false }));
       setChartRefreshKey((key) => key + 1);
@@ -516,11 +561,17 @@ export function App() {
   const handleRestoreFund = (fund: Fund) => {
     runWithBusy("恢复中...", async () => {
       await api(`/api/assets/${fund.id}/restore?${accountQuery()}`, { method: "POST" });
+      if (previewFund?.id === fund.id) setPreviewFund(null);
       await loadFunds({ preferredId: fund.id });
       await loadHiddenFunds();
       setHiddenFundsModalOpen(false);
       setChartRefreshKey((key) => key + 1);
     });
+  };
+
+  const handleSelectVisibleFund = (fundId: number) => {
+    setPreviewFund(null);
+    setSelectedFundId(fundId);
   };
 
   const closeNavModal = useCallback(() => {
@@ -547,7 +598,7 @@ export function App() {
         <FundSidebar
           funds={funds}
           selectedAccount={selectedAccount}
-          selectedFundId={selectedFundId}
+          selectedFundId={previewingHiddenFund ? null : selectedFundId}
           busy={busy.active}
           addingBusy={addingFundBusy}
           searchValue={fundSearch}
@@ -555,10 +606,11 @@ export function App() {
           onOpenAddFund={handleOpenAddFund}
           onOpenHiddenFunds={handleOpenHiddenFunds}
           onOpenAccountModal={() => setAccountModalOpen(true)}
-          onSelectFund={setSelectedFundId}
+          onSelectFund={handleSelectVisibleFund}
         />
         <Workspace
           fund={selectedFund}
+          previewingHiddenFund={previewingHiddenFund}
           busy={busy.active}
           busyLabel={busy.label}
           chartData={chartData}
@@ -621,6 +673,7 @@ export function App() {
         loading={hiddenFundsLoading}
         busy={busy.active}
         onClose={handleCloseHiddenFunds}
+        onPreview={handlePreviewHiddenFund}
         onRestore={handleRestoreFund}
       />
       <EditTradeModal

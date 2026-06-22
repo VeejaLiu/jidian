@@ -116,7 +116,7 @@ export function NavChart({ fund, data, loading, busy, onViewAllNav }: NavChartPr
             type: "scatter",
             data: buyPoints,
             symbolSize: 12,
-            itemStyle: { borderColor: "#fff", borderWidth: 2 },
+            itemStyle: { color: getCssVar("--trade-buy"), borderColor: "#fff", borderWidth: 2 },
             z: 5,
           },
           {
@@ -125,7 +125,7 @@ export function NavChart({ fund, data, loading, busy, onViewAllNav }: NavChartPr
             data: sellPoints,
             symbol: "diamond",
             symbolSize: 12,
-            itemStyle: { borderColor: "#fff", borderWidth: 2 },
+            itemStyle: { color: getCssVar("--trade-sell"), borderColor: "#fff", borderWidth: 2 },
             z: 5,
           },
           {

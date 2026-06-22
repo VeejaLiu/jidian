@@ -222,7 +222,11 @@ export function migrateTradeRecordsForPendingStatus() {
   }
 
   const columns = columnNames("trade_records");
-  if (!columns.includes("status") || !columns.includes("confirmed_at")) {
+  if (!columns.includes("status") || !columns.includes("confirmed_at") || !columns.includes("fee")) {
+    const feeSelect = columns.includes("fee") ? "COALESCE(fee, 0)" : "0";
+    const statusSelect = columns.includes("status") ? "COALESCE(status, 'confirmed')" : "'confirmed'";
+    const confirmedAtSelect = columns.includes("confirmed_at") ? "COALESCE(confirmed_at, created_at)" : "created_at";
+
     db.exec(`
       PRAGMA foreign_keys = OFF;
 
@@ -236,6 +240,7 @@ export function migrateTradeRecordsForPendingStatus() {
         trade_date TEXT NOT NULL CHECK (date(trade_date) = trade_date),
         trade_nav REAL CHECK (trade_nav IS NULL OR trade_nav > 0),
         amount REAL NOT NULL CHECK (amount > 0),
+        fee REAL NOT NULL DEFAULT 0 CHECK (fee >= 0),
         shares REAL CHECK (shares IS NULL OR shares > 0),
         status TEXT NOT NULL DEFAULT 'confirmed' CHECK (status IN ('pending', 'confirmed')),
         note TEXT,
@@ -254,6 +259,7 @@ export function migrateTradeRecordsForPendingStatus() {
         trade_date,
         trade_nav,
         amount,
+        fee,
         shares,
         status,
         note,
@@ -269,11 +275,12 @@ export function migrateTradeRecordsForPendingStatus() {
         trade_date,
         trade_nav,
         amount,
+        ${feeSelect},
         shares,
-        'confirmed',
+        ${statusSelect},
         note,
         source_buy_id,
-        created_at,
+        ${confirmedAtSelect},
         created_at
       FROM trade_records;
 

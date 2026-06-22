@@ -203,7 +203,7 @@ fundRoutes.post("/api/funds/:id/sync-nav", async (req, res, next) => {
     const sync = await syncFundNav(fundId, { startDate, endDate, fullHistory, source: "manual" });
 
     res.json({
-      fund: mapFund(getFundById(fundId, { accountId }), accountId),
+      fund: mapFund(getFundById(fundId, { accountId, includeHidden: true }), accountId),
       sync,
     });
   } catch (error) {
@@ -224,7 +224,7 @@ fundRoutes.post("/api/assets/:id/sync-price", async (req, res, next) => {
     const sync = await syncAssetPrice(fundId, { startDate, endDate, fullHistory, source: "manual" });
 
     res.json({
-      fund: mapFund(getFundById(fundId, { accountId }), accountId),
+      fund: mapFund(getFundById(fundId, { accountId, includeHidden: true }), accountId),
       sync,
     });
   } catch (error) {

@@ -9,6 +9,7 @@ import { formatDateTime, formatNav } from "../utils/format";
 
 interface WorkspaceProps {
   fund: Fund | null;
+  previewingHiddenFund?: boolean;
   busy: boolean;
   busyLabel: string;
   chartData: ChartData;
@@ -40,6 +41,7 @@ interface WorkspaceProps {
 
 export function Workspace({
   fund,
+  previewingHiddenFund = false,
   busy,
   busyLabel,
   chartData,
@@ -103,6 +105,7 @@ export function Workspace({
               <div className="fund-header-meta" aria-label="净值更新状态">
                 <span>{fund.assetType === "stock" ? "最新价格" : "最新净值"} {fund.status?.latestPriceDate || fund.status?.latestNavDate || "--"} / {formatNav(fund.status?.latestPrice ?? fund.status?.latestNav)}</span>
                 <span>上次更新 {formatDateTime(fund.lastPriceSyncAt || fund.lastNavSyncAt)}</span>
+                {previewingHiddenFund && <span>当前为隐藏资产预览</span>}
               </div>
             </div>
             <FundActionMenu fund={fund} busy={busy} onSelect={openFundAction} />

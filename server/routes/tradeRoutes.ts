@@ -31,7 +31,7 @@ function createTradeRecord(req: any, res: any, next: any, forcedType: "buy" | nu
       trade.status === "confirmed" ? new Date().toISOString() : null,
     );
 
-    res.status(201).json({ fund: mapFund(getFundById(fundId, { accountId }), accountId) });
+    res.status(201).json({ fund: mapFund(getFundById(fundId, { accountId, includeHidden: true }), accountId) });
   } catch (error) {
     next(error);
   }
@@ -102,7 +102,7 @@ tradeRoutes.put("/api/trades/:id", (req, res, next) => {
     });
 
     updateTrade();
-    res.json({ fund: mapFund(getFundById(currentTrade.fund_id, { accountId: currentTrade.account_id }), currentTrade.account_id) });
+    res.json({ fund: mapFund(getFundById(currentTrade.fund_id, { accountId: currentTrade.account_id, includeHidden: true }), currentTrade.account_id) });
   } catch (error) {
     next(error);
   }

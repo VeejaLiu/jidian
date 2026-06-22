@@ -7,6 +7,7 @@ interface HiddenFundsModalProps {
   loading: boolean;
   busy: boolean;
   onClose: () => void;
+  onPreview: (fund: Fund) => void;
   onRestore: (fund: Fund) => void;
 }
 
@@ -16,6 +17,7 @@ export function HiddenFundsModal({
   loading,
   busy,
   onClose,
+  onPreview,
   onRestore,
 }: HiddenFundsModalProps) {
   useEffect(() => {
@@ -51,15 +53,31 @@ export function HiddenFundsModal({
             <p className="empty-row">暂无隐藏的基金</p>
           ) : (
             funds.map((fund) => (
-              <div className="hidden-fund-item" key={fund.id}>
+              <button
+                className="hidden-fund-item"
+                key={fund.id}
+                type="button"
+                disabled={busy}
+                onClick={() => onPreview(fund)}
+              >
                 <div>
                   <strong>{fund.name}</strong>
                   <span>{[fund.code, fund.fundType].filter(Boolean).join(" / ") || "未填写代码"}</span>
                 </div>
-                <button className="secondary-button" type="button" disabled={busy} onClick={() => onRestore(fund)}>
-                  恢复显示
-                </button>
-              </div>
+                <div className="hidden-fund-actions">
+                  <button
+                    className="secondary-button"
+                    type="button"
+                    disabled={busy}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onRestore(fund);
+                    }}
+                  >
+                    恢复显示
+                  </button>
+                </div>
+              </button>
             ))
           )}
         </div>

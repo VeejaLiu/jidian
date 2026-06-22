@@ -312,6 +312,28 @@
   border-radius: 8px;
   padding: 12px;
   background: #ffffff;
+  width: 100%;
+  text-align: left;
+  appearance: none;
+  transition: border-color 140ms ease, box-shadow 140ms ease, transform 140ms ease;
+}
+
+.hidden-fund-item:hover:not(:disabled),
+.hidden-fund-item:focus-visible {
+  border-color: rgba(25, 123, 117, 0.34);
+  box-shadow: 0 8px 18px rgba(29, 45, 53, 0.08);
+}
+
+.hidden-fund-item:focus-visible {
+  outline: 0;
+}
+
+.hidden-fund-item:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.hidden-fund-item:disabled {
+  cursor: default;
 }
 
 .hidden-fund-item div {
@@ -330,6 +352,13 @@
 .hidden-fund-item span {
   color: var(--muted);
   font-size: 0.86rem;
+}
+
+.hidden-fund-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .modal-inline-loading {
