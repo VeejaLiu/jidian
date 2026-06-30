@@ -17,6 +17,7 @@ let lastServerError = "";
 let desktopLogDir = "";
 let mainLogPath = "";
 let errorLogPath = "";
+let windowStatePath = "";
 
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) {
@@ -60,6 +61,13 @@ function ensureDesktopLogDir() {
   return dir;
 }
 
+function ensureWindowStatePath() {
+  if (!windowStatePath) {
+    windowStatePath = path.join(app.getPath("userData"), "window-state.json");
+  }
+  return windowStatePath;
+}
+
 function ensureLocalDataDir(rootDir) {
   const dir = path.join(rootDir, "data");
   fs.mkdirSync(dir, { recursive: true });
@@ -89,6 +97,36 @@ function writeDesktopLog(level, message, errorText = "") {
   if (!desktopLogDir) ensureDesktopLogDir();
   const line = `[${level}] ${new Date().toISOString()} ${message}${errorText ? `\n${errorText}` : ""}\n`;
   fs.appendFileSync(level === "ERROR" ? errorLogPath : mainLogPath, line, "utf8");
+}
+
+function loadWindowState() {
+  try {
+    const filePath = ensureWindowStatePath();
+    if (!fs.existsSync(filePath)) return null;
+    const content = fs.readFileSync(filePath, "utf8");
+    const parsed = JSON.parse(content);
+    if (!parsed || typeof parsed !== "object") return null;
+    return parsed;
+  } catch (error) {
+    logMainError("读取窗口状态失败", error);
+    return null;
+  }
+}
+
+function saveWindowState(window) {
+  try {
+    const bounds = window.getBounds();
+    const nextState = {
+      x: bounds.x,
+      y: bounds.y,
+      width: bounds.width,
+      height: bounds.height,
+      isMaximized: window.isMaximized(),
+    };
+    fs.writeFileSync(ensureWindowStatePath(), JSON.stringify(nextState, null, 2), "utf8");
+  } catch (error) {
+    logMainError("保存窗口状态失败", error);
+  }
 }
 
 function logMain(message) {
@@ -249,9 +287,12 @@ async function createMainWindow() {
     return;
   }
 
+  const previousWindowState = loadWindowState();
   mainWindow = new BrowserWindow({
-    width: 1440,
-    height: 960,
+    width: previousWindowState?.width || 1440,
+    height: previousWindowState?.height || 960,
+    x: Number.isInteger(previousWindowState?.x) ? previousWindowState.x : undefined,
+    y: Number.isInteger(previousWindowState?.y) ? previousWindowState.y : undefined,
     minWidth: 1200,
     minHeight: 760,
     show: false,
@@ -265,7 +306,30 @@ async function createMainWindow() {
   });
 
   mainWindow.once("ready-to-show", () => {
+    if (previousWindowState?.isMaximized) {
+      mainWindow.maximize();
+    }
     mainWindow.show();
+  });
+
+  mainWindow.on("resize", () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    saveWindowState(mainWindow);
+  });
+
+  mainWindow.on("move", () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    saveWindowState(mainWindow);
+  });
+
+  mainWindow.on("maximize", () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    saveWindowState(mainWindow);
+  });
+
+  mainWindow.on("unmaximize", () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    saveWindowState(mainWindow);
   });
 
   mainWindow.on("closed", () => {
