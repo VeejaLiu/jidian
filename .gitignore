@@ -1,5 +1,7 @@
 node_modules/
 dist/
+build/server/
+release/
 
 # Local SQLite data. Keep the folder, never commit personal investment data.
 data/*

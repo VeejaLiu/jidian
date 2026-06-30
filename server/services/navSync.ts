@@ -1,6 +1,7 @@
 import { db } from "../db/database";
 import { addDaysISO, todayISO } from "../utils/date";
 import { toHttpError } from "../utils/httpError";
+import { logInfo, logWarn } from "../utils/logger";
 import { getFundById } from "./funds";
 import { fetchNavHistory, fetchStockPriceHistory, type PriceHistoryFetchResult } from "./eastmoney";
 import { assertTradeTimeline } from "./trades";
@@ -23,7 +24,7 @@ function logNavSync(message: string, details: Record<string, unknown> = {}) {
     .filter(([, value]) => value !== undefined && value !== null && value !== "")
     .map(([key, value]) => `${key}=${value}`)
     .join(" ");
-  console.info(`[nav-sync] ${new Date().toISOString()} ${message}${extra ? ` ${extra}` : ""}`);
+  logInfo(`[nav-sync] ${new Date().toISOString()} ${message}${extra ? ` ${extra}` : ""}`);
 }
 
 function formatLocalTime(timestamp: number | null) {
@@ -201,7 +202,7 @@ function confirmPendingTrades(fundId: number) {
         trade.id,
       );
     } catch (error) {
-      console.warn(`待确认交易无法自动确认 trade_id=${trade.id}: ${(error as Error).message}`);
+      logWarn(`待确认交易无法自动确认 trade_id=${trade.id}: ${(error as Error).message}`);
       return;
     }
 
@@ -428,7 +429,7 @@ export function syncActiveFundsInBackground() {
     });
 
     syncAssetPrice(fund.id, { source: "background" }).catch((error) => {
-      console.warn(`静默同步价格失败 fund_id=${fund.id}: ${error.message}`);
+      logWarn(`静默同步价格失败 fund_id=${fund.id}: ${error.message}`);
     });
   });
 }

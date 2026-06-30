@@ -6,9 +6,15 @@ import { setupFrontend } from "./frontend";
 import { accountRoutes } from "./routes/accountRoutes";
 import { fundRoutes } from "./routes/fundRoutes";
 import { tradeRoutes } from "./routes/tradeRoutes";
+import { installServerErrorLogging, logError, logInfo } from "./utils/logger";
 
 const app = express();
 app.use(express.json({ limit: "2mb" }));
+installServerErrorLogging();
+
+app.get("/api/health", (_req, res) => {
+  res.json({ ok: true });
+});
 
 migrateAccounts();
 migrateAssetTypes();
@@ -34,13 +40,13 @@ async function startServer() {
   setupErrorHandler();
 
   app.listen(PORT, () => {
-    console.log(`基点已启动：http://127.0.0.1:${PORT}`);
-    console.log(`运行模式：${IS_DEV ? "开发模式，支持前端自动更新" : "生产模式"}`);
-    console.log(`SQLite 数据库：${DB_PATH}`);
+    logInfo(`基点已启动 url=http://127.0.0.1:${PORT}`);
+    logInfo(`运行模式 mode=${IS_DEV ? "development" : "production"}`);
+    logInfo(`SQLite 数据库 path=${DB_PATH}`);
   });
 }
 
 startServer().catch((error) => {
-  console.error(error);
+  logError("服务启动失败", error);
   process.exit(1);
 });

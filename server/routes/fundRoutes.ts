@@ -4,6 +4,7 @@ import { fetchFundProfile, fetchStockProfile } from "../services/eastmoney";
 import { getChartData, getFundById, getPaginatedNavHistory, getPaginatedPriceHistory, listFunds, mapFund } from "../services/funds";
 import { getDefaultSyncStartDate, syncActiveFundsInBackground, syncAssetPrice, syncFundNav } from "../services/navSync";
 import { getAccountIdFromRequest } from "../services/accounts";
+import { logInfo } from "../utils/logger";
 import { assertDate, assertPositiveNumber, cleanText, normalizeAssetCode, normalizeCode } from "../utils/validators";
 import { toHttpError } from "../utils/httpError";
 
@@ -252,7 +253,7 @@ fundRoutes.post("/api/assets/:id/sync-price", async (req, res, next) => {
       ? assertDate(req.body.startDate, "开始日期")
       : undefined;
     const endDate = req.body.endDate ? assertDate(req.body.endDate, "结束日期") : "";
-    console.info(`[price-sync-api] ${new Date().toISOString()} 请求同步价格 fundId=${fundId} accountId=${accountId} fullHistory=${fullHistory} startDate=${startDate || "auto"} endDate=${endDate || "最新"}`);
+    logInfo(`[price-sync-api] ${new Date().toISOString()} 请求同步价格 fundId=${fundId} accountId=${accountId} fullHistory=${fullHistory} startDate=${startDate || "auto"} endDate=${endDate || "最新"}`);
     const sync = await syncAssetPrice(fundId, { startDate, endDate, fullHistory, source: "manual" });
 
     res.json({

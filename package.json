@@ -1,18 +1,23 @@
 {
   "name": "jidian",
   "version": "1.0.0",
-  "main": "server/index.ts",
+  "main": "electron/main.js",
   "scripts": {
     "dev": "NODE_ENV=development tsx server/index.ts",
     "build": "vite build",
+    "build:server": "tsc -p tsconfig.server.json",
     "start": "npm run build && NODE_ENV=production tsx server/index.ts",
+    "desktop:dev": "concurrently -k -n vite,electron -c blue,green \"vite\" \"wait-on tcp:127.0.0.1:5173 && cross-env NODE_ENV=development APP_RUNTIME=desktop electron .\"",
+    "desktop:build": "npm run build && npm run build:server && electron-builder --config electron-builder.config.js --mac zip dmg --arm64",
+    "desktop:build:dir": "npm run build && npm run build:server && electron-builder --config electron-builder.config.js --dir --arm64",
+    "desktop:build:universal": "npm run build && npm run build:server && electron-builder --config electron-builder.config.js --mac zip dmg --universal",
     "typecheck": "tsc --noEmit",
     "check": "npm run typecheck && vite build"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
+  "description": "基点是一个本地运行的基金与股票投资记录工具，支持历史价格同步、交易管理与持仓分析。",
   "engines": {
     "node": ">=24.0.0"
   },
@@ -28,14 +33,20 @@
     "react-dom": "^19.2.7"
   },
   "devDependencies": {
+    "@electron/notarize": "^3.1.0",
     "@types/better-sqlite3": "^7.6.13",
     "@types/express": "^5.0.6",
     "@types/node": "^25.9.1",
     "@types/react": "^19.2.16",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.2",
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
+    "electron": "^37.2.0",
+    "electron-builder": "^26.0.12",
     "tsx": "^4.22.4",
     "typescript": "^6.0.3",
-    "vite": "^8.0.16"
+    "vite": "^8.0.16",
+    "wait-on": "^8.0.5"
   }
 }

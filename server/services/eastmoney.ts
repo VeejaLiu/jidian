@@ -1,4 +1,5 @@
 import * as cheerio from "cheerio";
+import { logWarn } from "../utils/logger";
 
 export type PriceHistoryFetchResult = {
   rows: Array<{
@@ -249,7 +250,7 @@ export async function fetchStockPriceHistory(code: string, startDate: string, en
       fetchedPages: 1,
     } satisfies PriceHistoryFetchResult;
   } catch (error) {
-    console.warn(`[stock-price] ${new Date().toISOString()} eastmoney failed, fallback to tencent code=${code} error=${error instanceof Error ? error.message : String(error)}`);
+    logWarn(`[stock-price] ${new Date().toISOString()} eastmoney failed, fallback to tencent code=${code} error=${error instanceof Error ? error.message : String(error)}`);
     return fetchStockPriceHistoryFromTencent(code, startDate, endDate);
   }
 }
