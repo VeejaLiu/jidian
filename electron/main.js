@@ -5,14 +5,13 @@ const net = require("node:net");
 const { app, BrowserWindow, dialog } = require("electron");
 
 const HOST = "127.0.0.1";
-const DEFAULT_PORT = 4173;
 const HEALTH_PATH = "/api/health";
 const HEALTH_TIMEOUT_MS = 30000;
 const HEALTH_POLL_INTERVAL_MS = 400;
 
 let mainWindow = null;
 let serverProcess = null;
-let serverPort = DEFAULT_PORT;
+let serverPort = 0;
 let shuttingDown = false;
 let lastServerError = "";
 let desktopLogDir = "";
@@ -67,26 +66,14 @@ function ensureLocalDataDir(rootDir) {
   return dir;
 }
 
-function isPortAvailable(port) {
-  return new Promise((resolve) => {
-    const server = net.createServer();
-    server.unref();
-    server.on("error", () => resolve(false));
-    server.listen({ port, host: HOST }, () => {
-      server.close(() => resolve(true));
-    });
-  });
-}
-
 async function pickServerPort() {
-  if (await isPortAvailable(DEFAULT_PORT)) return DEFAULT_PORT;
   return new Promise((resolve, reject) => {
     const server = net.createServer();
     server.unref();
     server.on("error", reject);
     server.listen({ port: 0, host: HOST }, () => {
       const address = server.address();
-      const port = address && typeof address === "object" ? address.port : DEFAULT_PORT;
+      const port = address && typeof address === "object" ? address.port : 0;
       server.close(() => resolve(port));
     });
   });

@@ -71,6 +71,8 @@ npm run desktop:dev
 - Electron 桌面窗口
 - Electron 内部拉起的本地 Express 服务
 
+桌面版内置服务不会固定占用 `4173`，而是每次启动时自动选择一个本机空闲端口，避免和 `npm run dev` 冲突。
+
 macOS 打包：
 
 ```bash
@@ -89,6 +91,7 @@ npm run desktop:build:universal
 
 - 前端静态资源 `dist/`
 - 桌面版内置服务端 JS 产物 `build/server/`
+- 打包结束后自动恢复当前开发环境使用的 `better-sqlite3` 原生模块，避免影响后续 `npm run dev`
 
 仅输出目录结构，便于检查打包内容：
 
