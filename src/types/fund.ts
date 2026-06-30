@@ -6,6 +6,19 @@ export interface UserAccount {
   name: string;
 }
 
+export interface BackupPayload {
+  version: number;
+  exportedAt: string;
+  meta: {
+    accountCount: number;
+    assetCount: number;
+    hiddenAssetCount: number;
+    tradeCount: number;
+    priceHistoryCount: number;
+  };
+  tables: Record<string, any[]>;
+}
+
 export interface NavPoint {
   id?: number;
   date: string;

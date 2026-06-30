@@ -9,7 +9,7 @@ import { tradeRoutes } from "./routes/tradeRoutes";
 import { installServerErrorLogging, logError, logInfo } from "./utils/logger";
 
 const app = express();
-app.use(express.json({ limit: "2mb" }));
+app.use(express.json({ limit: "32mb" }));
 installServerErrorLogging();
 
 app.get("/api/health", (_req, res) => {

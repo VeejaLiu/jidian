@@ -11,6 +11,8 @@ interface AccountModalProps {
   onCreateAccount: (name: string) => void;
   onRenameAccount: (account: UserAccount, name: string) => void;
   onDeleteAccount: (account: UserAccount) => void;
+  onExportBackup: () => void;
+  onImportBackup: (file: File) => void;
 }
 
 export function AccountModal({
@@ -23,6 +25,8 @@ export function AccountModal({
   onCreateAccount,
   onRenameAccount,
   onDeleteAccount,
+  onExportBackup,
+  onImportBackup,
 }: AccountModalProps) {
   const [newName, setNewName] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -125,6 +129,26 @@ export function AccountModal({
             添加账户
           </button>
         </form>
+
+        <div className="account-create-form">
+          <button className="secondary-button" type="button" disabled={busy} onClick={onExportBackup}>
+            导出全部数据
+          </button>
+          <label className="secondary-button" style={{ display: "inline-flex", justifyContent: "center", cursor: busy ? "not-allowed" : "pointer" }}>
+            导入全部数据
+            <input
+              type="file"
+              accept="application/json"
+              disabled={busy}
+              style={{ display: "none" }}
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) onImportBackup(file);
+                event.currentTarget.value = "";
+              }}
+            />
+          </label>
+        </div>
       </div>
     </div>
   );

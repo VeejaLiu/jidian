@@ -8,7 +8,7 @@ import { EditTradeModal } from "./components/trade/EditTradeModal";
 import { Workspace } from "./components/Workspace";
 import { api } from "./api/client";
 import { DEFAULT_BUSY_LABEL, MIN_NAV_MODAL_LOADING_MS } from "./constants/app";
-import type { AssetDraft, ChartData, Fund, NavHistoryPage, TradeDraft, TradeRecord, TradeType, UserAccount } from "./types/fund";
+import type { AssetDraft, BackupPayload, ChartData, Fund, NavHistoryPage, TradeDraft, TradeRecord, TradeType, UserAccount } from "./types/fund";
 import { todayISO } from "./utils/date";
 import { formatMoney, formatShares, tradeTypeLabel } from "./utils/format";
 
@@ -357,6 +357,46 @@ export function App() {
     setChartRefreshKey((key) => key + 1);
   };
 
+  const handleExportBackup = () => {
+    runWithBusy("导出备份中...", async () => {
+      const payload = await api<BackupPayload>("/api/backup/export");
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const timestamp = new Date().toISOString().replaceAll(":", "-");
+      link.href = url;
+      link.download = `jidian-backup-${timestamp}.json`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      return true;
+    });
+  };
+
+  const handleImportBackup = (file: File) => {
+    const confirmed = window.confirm("导入会覆盖当前应用里的全部账户、资产、隐藏状态、交易历史和价格历史。确定继续吗？");
+    if (!confirmed) return;
+
+    runWithBusy("导入备份中...", async () => {
+      const text = await file.text();
+      const payload = JSON.parse(text);
+      await api("/api/backup/import", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      setPreviewFund(null);
+      setFundSearch("");
+      setHiddenFunds([]);
+      setSelectedFundId(null);
+      setChartData({ nav: [], trades: [], position: null });
+      await loadAccounts();
+      setChartRefreshKey((key) => key + 1);
+      window.alert("导入完成");
+      return true;
+    });
+  };
+
   const handleOpenAddFund = () => {
     setAddFundModalOpen(true);
   };
@@ -650,6 +690,8 @@ export function App() {
         onCreateAccount={handleCreateAccount}
         onRenameAccount={handleRenameAccount}
         onDeleteAccount={handleDeleteAccount}
+        onExportBackup={handleExportBackup}
+        onImportBackup={handleImportBackup}
       />
       <NavHistoryModal
         fund={selectedFund}
