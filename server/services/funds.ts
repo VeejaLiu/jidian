@@ -39,7 +39,15 @@ export function getFundById(id: number, options: { includeHidden?: boolean; acco
 export function mapFund(row: any, accountId: number) {
   const priceHistory = db
     .prepare(
-      `SELECT id, nav_date AS date, unit_nav AS nav, accumulated_nav AS accumulatedNav
+      `SELECT
+         id,
+         nav_date AS date,
+         unit_nav AS nav,
+         open_price AS openPrice,
+         close_price AS closePrice,
+         high_price AS highPrice,
+         low_price AS lowPrice,
+         accumulated_nav AS accumulatedNav
        FROM nav_history
        WHERE fund_id = ?
        ORDER BY nav_date DESC
@@ -104,6 +112,10 @@ export function getPaginatedNavHistory(fundId: number, page: unknown, pageSize: 
            id,
            nav_date AS date,
            unit_nav AS nav,
+           open_price AS openPrice,
+           close_price AS closePrice,
+           high_price AS highPrice,
+           low_price AS lowPrice,
            accumulated_nav AS accumulatedNav,
            LAG(unit_nav) OVER (ORDER BY nav_date ASC, id ASC) AS previousNav
          FROM nav_history
@@ -145,6 +157,10 @@ export function getChartData(fundId: number, accountId: number) {
          SELECT
            nav_date AS date,
            unit_nav AS nav,
+           open_price AS openPrice,
+           close_price AS closePrice,
+           high_price AS highPrice,
+           low_price AS lowPrice,
            LAG(unit_nav) OVER (ORDER BY nav_date ASC, id ASC) AS previousNav
          FROM nav_history
          WHERE fund_id = ?

@@ -27,3 +27,5 @@ pnpm-debug.log*
 .idea/misc.xml
 .idea/modules.xml
 .idea/vcs.xml
+.idea/dataSources.xml
+.idea/db-forest-config.xml

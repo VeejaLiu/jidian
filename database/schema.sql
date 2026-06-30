@@ -92,6 +92,10 @@ CREATE TABLE IF NOT EXISTS nav_history (
   fund_id INTEGER NOT NULL,
   nav_date TEXT NOT NULL CHECK (date(nav_date) = nav_date),
   unit_nav REAL NOT NULL CHECK (unit_nav > 0),
+  open_price REAL CHECK (open_price IS NULL OR open_price > 0),
+  close_price REAL CHECK (close_price IS NULL OR close_price > 0),
+  high_price REAL CHECK (high_price IS NULL OR high_price > 0),
+  low_price REAL CHECK (low_price IS NULL OR low_price > 0),
   accumulated_nav REAL CHECK (accumulated_nav IS NULL OR accumulated_nav > 0),
   source TEXT NOT NULL DEFAULT 'manual',
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -165,3 +169,63 @@ WHERE NOT EXISTS (
       OR (newer.nav_date = nh.nav_date AND newer.id > nh.id)
     )
 );
+
+CREATE VIEW IF NOT EXISTS latest_buy AS
+SELECT
+  tr.id,
+  tr.account_id,
+  tr.fund_id,
+  tr.trade_date AS buy_date,
+  tr.trade_nav AS buy_nav,
+  tr.amount,
+  tr.shares,
+  tr.note,
+  tr.created_at
+FROM trade_records tr
+WHERE NOT EXISTS (
+  SELECT 1
+  FROM trade_records newer
+  WHERE newer.account_id = tr.account_id
+    AND newer.fund_id = tr.fund_id
+    AND newer.trade_type = 'buy'
+    AND newer.status = 'confirmed'
+    AND (
+      newer.trade_date > tr.trade_date
+      OR (newer.trade_date = tr.trade_date AND newer.id > tr.id)
+    )
+)
+  AND tr.trade_type = 'buy'
+  AND tr.status = 'confirmed';
+
+CREATE VIEW IF NOT EXISTS fund_trigger_status AS
+SELECT
+  uf.account_id,
+  f.id AS fund_id,
+  f.code,
+  f.name,
+  COALESCE(uf.drop_rate, ss.drop_rate, 0.04) AS drop_rate,
+  lb.buy_date AS last_buy_date,
+  lb.buy_nav AS last_buy_nav,
+  ln.nav_date AS latest_nav_date,
+  ln.unit_nav AS latest_nav,
+  ROUND(lb.buy_nav * (1 - COALESCE(uf.drop_rate, ss.drop_rate, 0.04)), 6) AS trigger_nav,
+  CASE
+    WHEN lb.buy_nav IS NULL OR ln.unit_nav IS NULL THEN NULL
+    WHEN lb.buy_nav * (1 - COALESCE(uf.drop_rate, ss.drop_rate, 0.04)) >= ln.unit_nav THEN 0
+    ELSE ROUND(
+      (1 - (lb.buy_nav * (1 - COALESCE(uf.drop_rate, ss.drop_rate, 0.04)) / ln.unit_nav)) * 100,
+      4
+    )
+  END AS required_drop_percent,
+  CASE
+    WHEN lb.buy_nav IS NULL THEN 'missing_buy'
+    WHEN ln.unit_nav IS NULL THEN 'missing_nav'
+    WHEN lb.buy_nav * (1 - COALESCE(uf.drop_rate, ss.drop_rate, 0.04)) >= ln.unit_nav THEN 'triggered'
+    ELSE 'waiting'
+  END AS status
+FROM funds f
+JOIN user_funds uf ON uf.fund_id = f.id
+LEFT JOIN strategy_settings ss ON ss.fund_id = f.id
+LEFT JOIN latest_buy lb ON lb.account_id = uf.account_id AND lb.fund_id = f.id
+LEFT JOIN latest_nav ln ON ln.fund_id = f.id
+WHERE uf.is_active = 1;

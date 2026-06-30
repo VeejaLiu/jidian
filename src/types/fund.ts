@@ -11,6 +11,10 @@ export interface NavPoint {
   date: string;
   nav: number;
   price?: number;
+  openPrice?: number | null;
+  closePrice?: number | null;
+  highPrice?: number | null;
+  lowPrice?: number | null;
   accumulatedNav?: number | null;
   previousNav?: number | null;
   dailyChangePercent?: number | null;

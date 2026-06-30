@@ -168,6 +168,22 @@ export function migrateTradeFees() {
   }
 }
 
+export function migrateStockPriceFields() {
+  const navColumns = tableExists("nav_history") ? columnNames("nav_history") : [];
+  if (navColumns.length && !navColumns.includes("open_price")) {
+    db.exec("ALTER TABLE nav_history ADD COLUMN open_price REAL CHECK (open_price IS NULL OR open_price > 0);");
+  }
+  if (navColumns.length && !navColumns.includes("close_price")) {
+    db.exec("ALTER TABLE nav_history ADD COLUMN close_price REAL CHECK (close_price IS NULL OR close_price > 0);");
+  }
+  if (navColumns.length && !navColumns.includes("high_price")) {
+    db.exec("ALTER TABLE nav_history ADD COLUMN high_price REAL CHECK (high_price IS NULL OR high_price > 0);");
+  }
+  if (navColumns.length && !navColumns.includes("low_price")) {
+    db.exec("ALTER TABLE nav_history ADD COLUMN low_price REAL CHECK (low_price IS NULL OR low_price > 0);");
+  }
+}
+
 export function migrateTradeRecordsForPendingStatus() {
   db.exec(`
     DROP VIEW IF EXISTS fund_trigger_status;

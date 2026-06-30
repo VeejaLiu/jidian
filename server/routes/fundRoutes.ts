@@ -10,10 +10,34 @@ import { toHttpError } from "../utils/httpError";
 export const fundRoutes = Router();
 
 const upsertNav = db.prepare(
-  `INSERT INTO nav_history (fund_id, nav_date, unit_nav, accumulated_nav, source)
-   VALUES (@fundId, @date, @nav, @accumulatedNav, 'eastmoney')
+  `INSERT INTO nav_history (
+     fund_id,
+     nav_date,
+     unit_nav,
+     open_price,
+     close_price,
+     high_price,
+     low_price,
+     accumulated_nav,
+     source
+   )
+   VALUES (
+     @fundId,
+     @date,
+     @nav,
+     @openPrice,
+     @closePrice,
+     @highPrice,
+     @lowPrice,
+     @accumulatedNav,
+     'eastmoney'
+   )
    ON CONFLICT(fund_id, nav_date) DO UPDATE SET
      unit_nav = excluded.unit_nav,
+     open_price = excluded.open_price,
+     close_price = excluded.close_price,
+     high_price = excluded.high_price,
+     low_price = excluded.low_price,
      accumulated_nav = excluded.accumulated_nav,
      source = excluded.source`,
 );
@@ -139,6 +163,10 @@ fundRoutes.post("/api/funds/:id/nav", (req, res, next) => {
       fundId,
       date: req.body.date,
       nav,
+      openPrice: null,
+      closePrice: nav,
+      highPrice: null,
+      lowPrice: null,
       accumulatedNav: req.body.accumulatedNav ? Number(req.body.accumulatedNav) : null,
     });
 
@@ -159,6 +187,10 @@ fundRoutes.post("/api/assets/:id/prices", (req, res, next) => {
       fundId,
       date: req.body.date,
       nav,
+      openPrice: req.body.openPrice ? Number(req.body.openPrice) : null,
+      closePrice: req.body.closePrice ? Number(req.body.closePrice) : nav,
+      highPrice: req.body.highPrice ? Number(req.body.highPrice) : null,
+      lowPrice: req.body.lowPrice ? Number(req.body.lowPrice) : null,
       accumulatedNav: req.body.accumulatedNav ? Number(req.body.accumulatedNav) : null,
     });
 

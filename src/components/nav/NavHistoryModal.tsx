@@ -52,19 +52,40 @@ export function NavHistoryModal({ fund, modal, busy, onClose, onPrev, onNext }: 
             <thead>
               <tr>
                 <th>日期</th>
-                <th>{isStock ? "价格" : "单位净值"}</th>
+                {isStock ? (
+                  <>
+                    <th>开盘</th>
+                    <th>收盘</th>
+                    <th>最高</th>
+                    <th>最低</th>
+                  </>
+                ) : (
+                  <th>单位净值</th>
+                )}
                 <th>较前日</th>
                 <th>{isStock ? "累计值" : "累计净值"}</th>
               </tr>
             </thead>
             <DataTable
               records={modal.rows}
-              columns={[
-                { key: "date", render: (record) => record.date },
-                { key: "nav", render: (record) => formatNav(record.nav) },
-                { key: "dailyChange", render: (record) => <DailyChangeTag point={record} /> },
-                { key: "accumulatedNav", render: (record) => formatNav(record.accumulatedNav) },
-              ]}
+              columns={
+                isStock
+                  ? [
+                      { key: "date", render: (record) => record.date },
+                      { key: "openPrice", render: (record) => formatNav(record.openPrice) },
+                      { key: "closePrice", render: (record) => formatNav(record.closePrice ?? record.nav) },
+                      { key: "highPrice", render: (record) => formatNav(record.highPrice) },
+                      { key: "lowPrice", render: (record) => formatNav(record.lowPrice) },
+                      { key: "dailyChange", render: (record) => <DailyChangeTag point={record} /> },
+                      { key: "accumulatedNav", render: (record) => formatNav(record.accumulatedNav) },
+                    ]
+                  : [
+                      { key: "date", render: (record) => record.date },
+                      { key: "nav", render: (record) => formatNav(record.nav) },
+                      { key: "dailyChange", render: (record) => <DailyChangeTag point={record} /> },
+                      { key: "accumulatedNav", render: (record) => formatNav(record.accumulatedNav) },
+                    ]
+              }
               emptyText={modal.loading ? "" : "暂无记录"}
             />
           </table>

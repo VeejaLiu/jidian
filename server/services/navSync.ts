@@ -105,10 +105,34 @@ function getSyncDecision(fundId: number) {
 }
 
 const upsertNav = db.prepare(
-  `INSERT INTO nav_history (fund_id, nav_date, unit_nav, accumulated_nav, source)
-   VALUES (@fundId, @date, @nav, @accumulatedNav, 'eastmoney')
+  `INSERT INTO nav_history (
+     fund_id,
+     nav_date,
+     unit_nav,
+     open_price,
+     close_price,
+     high_price,
+     low_price,
+     accumulated_nav,
+     source
+   )
+   VALUES (
+     @fundId,
+     @date,
+     @nav,
+     @openPrice,
+     @closePrice,
+     @highPrice,
+     @lowPrice,
+     @accumulatedNav,
+     'eastmoney'
+   )
    ON CONFLICT(fund_id, nav_date) DO UPDATE SET
      unit_nav = excluded.unit_nav,
+     open_price = excluded.open_price,
+     close_price = excluded.close_price,
+     high_price = excluded.high_price,
+     low_price = excluded.low_price,
      accumulated_nav = excluded.accumulated_nav,
      source = excluded.source`,
 );
@@ -297,6 +321,10 @@ export async function syncFundNav(fundId: number, options: SyncOptions = {}) {
           fundId,
           date: row.date,
           nav: row.nav,
+          openPrice: row.openPrice ?? null,
+          closePrice: row.closePrice ?? row.nav,
+          highPrice: row.highPrice ?? null,
+          lowPrice: row.lowPrice ?? null,
           accumulatedNav: row.accumulatedNav,
         });
       });

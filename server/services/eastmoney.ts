@@ -1,7 +1,15 @@
 import * as cheerio from "cheerio";
 
 export type PriceHistoryFetchResult = {
-  rows: Array<{ date: string; nav: number; accumulatedNav: number | null }>;
+  rows: Array<{
+    date: string;
+    nav: number;
+    accumulatedNav: number | null;
+    openPrice?: number | null;
+    closePrice?: number | null;
+    highPrice?: number | null;
+    lowPrice?: number | null;
+  }>;
   assetName?: string;
   sourceRecords: number;
   sourcePages: number;
@@ -142,6 +150,10 @@ type StockPriceRow = {
   date: string;
   nav: number;
   accumulatedNav: number | null;
+  openPrice: number | null;
+  closePrice: number | null;
+  highPrice: number | null;
+  lowPrice: number | null;
 };
 
 function parseEastmoneyDateInput(value: string, fallback: string) {
@@ -211,13 +223,20 @@ export async function fetchStockPriceHistory(code: string, startDate: string, en
 
     const rows = klines
       .map((line: string) => {
-        const [date, close] = String(line).split(",");
-        const price = Number(close);
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(price) || price <= 0) return null;
+        const [date, open, close, high, low] = String(line).split(",");
+        const openPrice = Number(open);
+        const closePrice = Number(close);
+        const highPrice = Number(high);
+        const lowPrice = Number(low);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(closePrice) || closePrice <= 0) return null;
         return {
           date,
-          nav: price,
+          nav: closePrice,
           accumulatedNav: null,
+          openPrice: Number.isFinite(openPrice) && openPrice > 0 ? openPrice : null,
+          closePrice,
+          highPrice: Number.isFinite(highPrice) && highPrice > 0 ? highPrice : null,
+          lowPrice: Number.isFinite(lowPrice) && lowPrice > 0 ? lowPrice : null,
         };
       })
       .filter(Boolean) as StockPriceRow[];
@@ -267,12 +286,19 @@ async function fetchStockPriceHistoryFromTencent(code: string, startDate: string
   const rows = series
     .map((item: any) => {
       const date = String(Array.isArray(item) ? item[0] : "");
+      const open = Number(Array.isArray(item) ? item[1] : NaN);
       const close = Number(Array.isArray(item) ? item[2] : NaN);
+      const high = Number(Array.isArray(item) ? item[3] : NaN);
+      const low = Number(Array.isArray(item) ? item[4] : NaN);
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(close) || close <= 0) return null;
       return {
         date,
         nav: close,
         accumulatedNav: null,
+        openPrice: Number.isFinite(open) && open > 0 ? open : null,
+        closePrice: close,
+        highPrice: Number.isFinite(high) && high > 0 ? high : null,
+        lowPrice: Number.isFinite(low) && low > 0 ? low : null,
       };
     })
     .filter(Boolean) as StockPriceRow[];
