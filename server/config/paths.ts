@@ -30,6 +30,9 @@ export const DATA_DIR = process.env.APP_DATA_DIR
 export const LOG_DIR = process.env.APP_LOG_DIR
   ? path.resolve(process.env.APP_LOG_DIR)
   : path.join(DATA_DIR, "logs");
+export const BACKUP_DIR = process.env.APP_BACKUP_DIR
+  ? path.resolve(process.env.APP_BACKUP_DIR)
+  : path.join(DATA_DIR, "backups");
 export const DB_PATH = process.env.APP_DB_PATH
   ? path.resolve(process.env.APP_DB_PATH)
   : path.join(DATA_DIR, "fund-dca.sqlite");

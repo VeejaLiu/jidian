@@ -1,4 +1,5 @@
 import { useEffect, type FormEvent } from "react";
+import { DatePicker } from "../DatePicker";
 import type { Fund } from "../../types/fund";
 import type { FundAction } from "./FundActionMenu";
 
@@ -7,10 +8,13 @@ interface FundActionModalProps {
   fund: Fund;
   busy: boolean;
   dropRateDraft: string;
+  manualPriceDraft: { date: string; price: string; accumulatedNav: string };
   onDropRateDraftChange: (value: string) => void;
+  onManualPriceDraftChange: (draft: { date: string; price: string; accumulatedNav: string }) => void;
   onClose: () => void;
   onConfirmDropRate: () => boolean | Promise<boolean>;
   onConfirmSyncNav: () => boolean | Promise<boolean>;
+  onConfirmManualPrice: () => boolean | Promise<boolean>;
   onConfirmHideFund: () => boolean | Promise<boolean>;
 }
 
@@ -19,10 +23,13 @@ export function FundActionModal({
   fund,
   busy,
   dropRateDraft,
+  manualPriceDraft,
   onDropRateDraftChange,
+  onManualPriceDraftChange,
   onClose,
   onConfirmDropRate,
   onConfirmSyncNav,
+  onConfirmManualPrice,
   onConfirmHideFund,
 }: FundActionModalProps) {
   useEffect(() => {
@@ -42,6 +49,7 @@ export function FundActionModal({
     let ok = false;
     if (action === "dropRate") ok = await onConfirmDropRate();
     if (action === "syncNav") ok = await onConfirmSyncNav();
+    if (action === "manualPrice") ok = await onConfirmManualPrice();
     if (action === "hideFund") ok = await onConfirmHideFund();
     if (ok) onClose();
   };
@@ -92,6 +100,45 @@ export function FundActionModal({
           </label>
         )}
 
+        {action === "manualPrice" && (
+          <div className="manual-price-form">
+            <label className="fund-action-field">
+              <span>日期</span>
+              <DatePicker
+                value={manualPriceDraft.date}
+                disabled={busy}
+                onChange={(date) => onManualPriceDraftChange({ ...manualPriceDraft, date })}
+              />
+            </label>
+            <label className="fund-action-field">
+              <span>{fund.assetType === "stock" ? "收盘价" : "单位净值"}</span>
+              <input
+                type="number"
+                min="0.0001"
+                step="0.0001"
+                value={manualPriceDraft.price}
+                disabled={busy}
+                autoFocus
+                onChange={(event) => onManualPriceDraftChange({ ...manualPriceDraft, price: event.target.value })}
+              />
+            </label>
+            {fund.assetType !== "stock" && (
+              <label className="fund-action-field">
+                <span>累计净值</span>
+                <input
+                  type="number"
+                  min="0.0001"
+                  step="0.0001"
+                  value={manualPriceDraft.accumulatedNav}
+                  disabled={busy}
+                  placeholder="可选"
+                  onChange={(event) => onManualPriceDraftChange({ ...manualPriceDraft, accumulatedNav: event.target.value })}
+                />
+              </label>
+            )}
+          </div>
+        )}
+
         <div className="modal-actions">
           <button className="secondary-button neutral-button" type="button" disabled={busy} onClick={onClose}>
             取消
@@ -132,6 +179,21 @@ function getActionMeta(action: FundAction, fundName: string, assetType: Fund["as
       confirmLabel: isStock ? "开始同步" : "开始更新",
       busyLabel: "更新中...",
       mark: "↻",
+      tone: "primary",
+    };
+  }
+
+  if (action === "manualPrice") {
+    return {
+      eyebrow: isStock ? "价格补录" : "净值补录",
+      title: isStock ? "补录价格" : "补录净值",
+      summary: `手动添加「${fundName}」的${isStock ? "价格" : "净值"}`,
+      description: isStock
+        ? "用于数据源不可用或缺少某天行情时补齐收盘价。"
+        : "用于数据源不可用或缺少某天净值时补齐单位净值。",
+      confirmLabel: "保存补录",
+      busyLabel: "保存中...",
+      mark: "+",
       tone: "primary",
     };
   }

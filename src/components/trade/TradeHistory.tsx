@@ -14,6 +14,7 @@ export function TradeHistory({ fund, onEditTrade, onDeleteTrade }: TradeHistoryP
   const isStock = fund.assetType === "stock";
   const [page, setPage] = useState(1);
   const trades = fund.trades || fund.buys || [];
+  const dividends = fund.dividends || [];
   const latestTrade = trades[0];
   const buyDropMap = useMemo(() => buildBuyDropMap(trades), [trades]);
   const sellReturnRateMap = useMemo(() => buildSellReturnRateMap(trades), [trades]);
@@ -83,6 +84,15 @@ export function TradeHistory({ fund, onEditTrade, onDeleteTrade }: TradeHistoryP
           <span>{latestTrade ? `最近：${latestTrade.date} / ${tradeTypeLabel(latestTrade.type)} / ${formatNav(latestTrade.nav)}` : ""}</span>
         </div>
       </div>
+      {dividends.length > 0 && (
+        <div className="dividend-list" aria-label="分红记录">
+          {dividends.slice(0, 3).map((dividend) => (
+            <span key={dividend.id}>
+              {dividend.date} / {dividend.type === "cash" ? "现金分红" : "红利再投"} / {formatMoney(dividend.amount)}
+            </span>
+          ))}
+        </div>
+      )}
       <div className="table-wrap buy-history-wrap">
         <table>
           <thead>

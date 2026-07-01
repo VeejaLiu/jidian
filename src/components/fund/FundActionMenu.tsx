@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Fund } from "../../types/fund";
 
-export type FundAction = "dropRate" | "syncNav" | "hideFund";
+export type FundAction = "dropRate" | "syncNav" | "manualPrice" | "hideFund";
 
 interface FundActionMenuProps {
   busy: boolean;
@@ -61,6 +61,10 @@ export function FundActionMenu({ busy, fund, onSelect }: FundActionMenuProps) {
           <button type="button" role="menuitem" onClick={() => selectAction("syncNav")}>
             <strong>{isStock ? "同步价格" : "更新净值"}</strong>
             <span>{isStock ? "手动拉取最新历史价格" : "手动拉取最新历史净值"}</span>
+          </button>
+          <button type="button" role="menuitem" onClick={() => selectAction("manualPrice")}>
+            <strong>{isStock ? "补录价格" : "补录净值"}</strong>
+            <span>{isStock ? "手动添加某一天的收盘价" : "手动添加某一天的单位净值"}</span>
           </button>
           <button className="danger" type="button" role="menuitem" onClick={() => selectAction("hideFund")}>
             <strong>隐藏资产</strong>

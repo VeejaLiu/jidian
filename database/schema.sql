@@ -60,6 +60,12 @@ END;
 
 CREATE INDEX IF NOT EXISTS idx_funds_name ON funds (name);
 
+CREATE TABLE IF NOT EXISTS app_metadata (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE TRIGGER IF NOT EXISTS trg_funds_updated_at
 AFTER UPDATE ON funds
 FOR EACH ROW
@@ -156,6 +162,24 @@ CREATE INDEX IF NOT EXISTS idx_trade_records_fund_date
 CREATE INDEX IF NOT EXISTS idx_trade_records_source_buy
   ON trade_records (source_buy_id)
   WHERE source_buy_id IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS dividend_records (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  account_id INTEGER NOT NULL DEFAULT 1,
+  fund_id INTEGER NOT NULL,
+  dividend_type TEXT NOT NULL CHECK (dividend_type IN ('cash', 'reinvest')),
+  dividend_date TEXT NOT NULL CHECK (date(dividend_date) = dividend_date),
+  amount REAL NOT NULL CHECK (amount > 0),
+  dividend_nav REAL CHECK (dividend_nav IS NULL OR dividend_nav > 0),
+  shares REAL CHECK (shares IS NULL OR shares > 0),
+  note TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (account_id) REFERENCES user_accounts (id) ON DELETE CASCADE,
+  FOREIGN KEY (fund_id) REFERENCES funds (id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_dividend_records_fund_date
+  ON dividend_records (account_id, fund_id, dividend_date DESC, id DESC);
 
 CREATE VIEW IF NOT EXISTS latest_nav AS
 SELECT nh.*

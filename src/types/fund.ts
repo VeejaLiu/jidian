@@ -1,5 +1,6 @@
 export type TradeType = "buy" | "sell";
 export type AssetType = "fund" | "stock";
+export type DividendType = "cash" | "reinvest";
 
 export interface UserAccount {
   id: number;
@@ -46,6 +47,16 @@ export interface TradeRecord {
   sellReturnRate?: number | null;
 }
 
+export interface DividendRecord {
+  id: number;
+  type: DividendType;
+  date: string;
+  amount: number;
+  nav?: number | null;
+  shares?: number | null;
+  note?: string | null;
+}
+
 export interface TradeDraft {
   type: TradeType;
   date: string;
@@ -65,6 +76,7 @@ export interface FundPosition {
   hasOpenPosition?: boolean | null;
   realizedAmount?: number | null;
   realizedCost?: number | null;
+  dividendIncome?: number | null;
   realizedProfit?: number | null;
 }
 
@@ -82,6 +94,16 @@ export interface FundStatus {
   state?: string | null;
 }
 
+export interface FundSyncStatus {
+  syncing?: boolean;
+  reason?: string | null;
+  hasPendingTrade?: boolean | null;
+  lastTouchedAt?: number | null;
+  nextSyncAt?: number | null;
+  remainingMs?: number | null;
+  intervalMs?: number | null;
+}
+
 export interface Fund {
   id: number;
   code?: string | null;
@@ -92,11 +114,13 @@ export interface Fund {
   lastNavSyncAt?: string | null;
   lastPriceSyncAt?: string | null;
   status?: FundStatus;
+  syncStatus?: FundSyncStatus;
   position?: FundPosition;
   navHistory?: NavPoint[];
   priceHistory?: NavPoint[];
   trades?: TradeRecord[];
   buys?: TradeRecord[];
+  dividends?: DividendRecord[];
 }
 
 export interface AssetDraft {
@@ -110,7 +134,38 @@ export interface ChartData {
   prices?: NavPoint[];
   trades: TradeRecord[];
   buys?: TradeRecord[];
+  dividends?: DividendRecord[];
   position: FundPosition | null;
+}
+
+export interface AccountSummaryAsset {
+  id: number;
+  name: string;
+  code?: string | null;
+  assetType?: AssetType | null;
+  totalCost: number;
+  totalShares: number;
+  latestPrice?: number | null;
+  marketValue: number;
+  realizedProfit: number;
+  totalProfit: number;
+  xirr?: number | null;
+}
+
+export interface AccountSummary {
+  accountId: number;
+  totals: {
+    totalCost: number;
+    marketValue: number;
+    realizedProfit: number;
+    totalProfit: number;
+    totalProfitRate: number | null;
+    xirr?: number | null;
+    fundMarketValue: number;
+    stockMarketValue: number;
+    assetCount: number;
+  };
+  assets: AccountSummaryAsset[];
 }
 
 export interface NavHistoryPage {

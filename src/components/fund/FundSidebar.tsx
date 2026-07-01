@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, type RefObject } from "react";
 import type { Fund, UserAccount } from "../../types/fund";
 import { fundMatchesSearch } from "../../utils/search";
 
@@ -9,6 +9,7 @@ interface FundSidebarProps {
   busy: boolean;
   addingBusy: boolean;
   searchValue: string;
+  searchInputRef?: RefObject<HTMLInputElement | null>;
   onSearchChange: (value: string) => void;
   onOpenAddFund: () => void;
   onOpenHiddenFunds: () => void;
@@ -23,6 +24,7 @@ export function FundSidebar({
   busy,
   addingBusy,
   searchValue,
+  searchInputRef,
   onSearchChange,
   onOpenAddFund,
   onOpenHiddenFunds,
@@ -67,6 +69,7 @@ export function FundSidebar({
         <label className="fund-search">
           <span>搜索</span>
           <input
+            ref={searchInputRef}
             value={searchValue}
             onChange={(event) => onSearchChange(event.target.value)}
             placeholder="代码 / 名称 / 拼音缩写"

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { createAccount, deleteAccount, listAccounts, renameAccount } from "../services/accounts";
-import { exportBackup, importBackup } from "../services/backups";
+import { exportBackup, importBackup, previewImportBackup } from "../services/backups";
+import { getAccountSummary } from "../services/funds";
 import { logInfo } from "../utils/logger";
 
 export const accountRoutes = Router();
@@ -33,6 +34,14 @@ accountRoutes.delete("/api/accounts/:id", (req, res, next) => {
   }
 });
 
+accountRoutes.get("/api/accounts/:id/summary", (req, res, next) => {
+  try {
+    res.json(getAccountSummary(Number(req.params.id)));
+  } catch (error) {
+    next(error);
+  }
+});
+
 accountRoutes.get("/api/backup/export", (_req, res, next) => {
   try {
     logInfo("[backup] 导出整库备份");
@@ -46,6 +55,15 @@ accountRoutes.post("/api/backup/import", (req, res, next) => {
   try {
     logInfo("[backup] 导入整库备份");
     res.json(importBackup(req.body));
+  } catch (error) {
+    next(error);
+  }
+});
+
+accountRoutes.post("/api/backup/preview", (req, res, next) => {
+  try {
+    logInfo("[backup] 预览整库备份导入");
+    res.json({ preview: previewImportBackup(req.body) });
   } catch (error) {
     next(error);
   }

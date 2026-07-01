@@ -5,11 +5,10 @@ import { logInfo, logWarn } from "../utils/logger";
 import { getFundById } from "./funds";
 import { fetchNavHistory, fetchStockPriceHistory, type PriceHistoryFetchResult } from "./eastmoney";
 import { assertTradeTimeline } from "./trades";
+import { getSyncDecision, navSyncJobs, navSyncTouchedAt } from "./syncState";
 
-const navSyncJobs = new Set<number>();
-const navSyncTouchedAt = new Map<number, number>();
-const NAV_SYNC_INTERVAL_MS = 6 * 60 * 60 * 1000;
-const PENDING_TRADE_SYNC_INTERVAL_MS = 5 * 60 * 1000;
+const BACKGROUND_SYNC_CHECK_INTERVAL_MS = Number(process.env.BACKGROUND_SYNC_CHECK_INTERVAL_MS || 30 * 60 * 1000);
+let backgroundSyncTimer: NodeJS.Timeout | null = null;
 
 type SyncSource = "background" | "manual" | "add-fund" | "system";
 type SyncOptions = {
@@ -58,51 +57,6 @@ function getDefaultSyncStartDate(fundId: number, options: { includeLatestDay?: b
   }
 
   return "";
-}
-
-function getSyncDecision(fundId: number) {
-  const lastTouchedAt = navSyncTouchedAt.get(fundId) || 0;
-  const pendingTrade = db
-    .prepare("SELECT 1 FROM trade_records WHERE fund_id = ? AND status = 'pending' LIMIT 1")
-    .get(fundId);
-  const interval = pendingTrade ? PENDING_TRADE_SYNC_INTERVAL_MS : NAV_SYNC_INTERVAL_MS;
-  const nextSyncAt = lastTouchedAt ? lastTouchedAt + interval : null;
-  const remainingMs = nextSyncAt ? Math.max(0, nextSyncAt - Date.now()) : 0;
-  const isRunning = navSyncJobs.has(fundId);
-
-  if (isRunning) {
-    return {
-      skip: true,
-      reason: "syncing",
-      hasPendingTrade: Boolean(pendingTrade),
-      interval,
-      lastTouchedAt,
-      nextSyncAt,
-      remainingMs,
-    };
-  }
-
-  if (remainingMs > 0) {
-    return {
-      skip: true,
-      reason: "throttled",
-      hasPendingTrade: Boolean(pendingTrade),
-      interval,
-      lastTouchedAt,
-      nextSyncAt,
-      remainingMs,
-    };
-  }
-
-  return {
-    skip: false,
-    reason: "ready",
-    hasPendingTrade: Boolean(pendingTrade),
-    interval,
-    lastTouchedAt,
-    nextSyncAt,
-    remainingMs,
-  };
 }
 
 const upsertNav = db.prepare(
@@ -432,6 +386,15 @@ export function syncActiveFundsInBackground() {
       logWarn(`静默同步价格失败 fund_id=${fund.id}: ${error.message}`);
     });
   });
+}
+
+export function startBackgroundSyncScheduler() {
+  if (backgroundSyncTimer) return;
+
+  logNavSync("启动后台价格检查调度", { interval: formatDuration(BACKGROUND_SYNC_CHECK_INTERVAL_MS) });
+  syncActiveFundsInBackground();
+  backgroundSyncTimer = setInterval(syncActiveFundsInBackground, BACKGROUND_SYNC_CHECK_INTERVAL_MS);
+  backgroundSyncTimer.unref?.();
 }
 
 export { getDefaultSyncStartDate };

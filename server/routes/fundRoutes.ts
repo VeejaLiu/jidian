@@ -97,7 +97,7 @@ async function createAssetHandler(req: any, res: any, next: any) {
        ON CONFLICT(account_id, fund_id) DO UPDATE SET is_active = 1`,
     ).run(accountId, row.id);
 
-    if (assetType === "fund") {
+    if (assetType === "fund" && code) {
       await syncFundNav(row.id, { fullHistory: true, source: "add-fund" });
     }
 

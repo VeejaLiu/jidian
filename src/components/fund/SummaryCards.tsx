@@ -17,6 +17,7 @@ export function SummaryCards({ fund }: SummaryCardsProps) {
   const totalShares = Number(position.totalShares);
   const realizedCost = Number(position.realizedCost);
   const realizedProfit = Number(position.realizedProfit);
+  const dividendIncome = Number(position.dividendIncome);
   const latestPrice = status.latestPrice ?? status.latestNav;
   const lastBuyPrice = status.lastBuyPrice ?? status.lastBuyNav;
   const triggerPrice = status.triggerPrice ?? status.triggerNav;
@@ -69,8 +70,8 @@ export function SummaryCards({ fund }: SummaryCardsProps) {
           <strong>{Number.isFinite(totalProfitRate) ? formatPercent(totalProfitRate) : "待计算"}</strong>
         </article>
         <article className="metric-card metric-card-hero">
-          <span>持有天数</span>
-          <strong>{Number.isFinite(holdingDays) ? `${holdingDays} 天` : "待填写"}</strong>
+          <span>分红收益</span>
+          <strong>{Number.isFinite(dividendIncome) ? formatMoney(dividendIncome) : "0.00"}</strong>
         </article>
       </div>
 
@@ -90,6 +91,10 @@ export function SummaryCards({ fund }: SummaryCardsProps) {
         <article className="metric-card metric-card-compact cost">
           <span>{displayAverageCostLabel}</span>
           <strong>{hasAverageCost ? formatNav(displayAverageCost) : "待买入"}</strong>
+        </article>
+        <article className="metric-card metric-card-compact">
+          <span>持有天数</span>
+          <strong>{Number.isFinite(holdingDays) ? `${holdingDays} 天` : "待填写"}</strong>
         </article>
         <article className="metric-card metric-card-compact trigger-card">
           <span>判断</span>

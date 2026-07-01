@@ -1,11 +1,13 @@
 import express from "express";
 import { DB_PATH, IS_DEV, PORT } from "./config/paths";
 import "./db/database";
-import { migrateAccounts, migrateAssetTypes, migrateStockPriceFields, migrateTradeFees, migrateTradeRecordsForPendingStatus } from "./db/migrations";
+import { migrateAccounts, migrateAssetTypes, migrateDividendRecords, migrateStockPriceFields, migrateTradeFees, migrateTradeRecordsForPendingStatus } from "./db/migrations";
 import { setupFrontend } from "./frontend";
 import { accountRoutes } from "./routes/accountRoutes";
 import { fundRoutes } from "./routes/fundRoutes";
 import { tradeRoutes } from "./routes/tradeRoutes";
+import { startBackgroundSyncScheduler } from "./services/navSync";
+import { getHttpStatus, getPublicErrorMessage } from "./utils/httpError";
 import { installServerErrorLogging, logError, logInfo } from "./utils/logger";
 
 const app = express();
@@ -21,6 +23,7 @@ migrateAssetTypes();
 migrateTradeRecordsForPendingStatus();
 migrateTradeFees();
 migrateStockPriceFields();
+migrateDividendRecords();
 
 app.use(accountRoutes);
 app.use(fundRoutes);
@@ -29,8 +32,12 @@ app.use(tradeRoutes);
 function setupErrorHandler() {
   app.use((error: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
     if (res.headersSent) return next(error);
-    res.status(error.status || 500).json({
-      error: error.message || "服务暂时不可用",
+    const status = getHttpStatus(error);
+    if (status >= 500) {
+      logError(`请求失败 method=${req.method} path=${req.path} status=${status}`, error);
+    }
+    res.status(status).json({
+      error: getPublicErrorMessage(error),
     });
   });
 }
@@ -43,6 +50,7 @@ async function startServer() {
     logInfo(`基点已启动 url=http://127.0.0.1:${PORT}`);
     logInfo(`运行模式 mode=${IS_DEV ? "development" : "production"}`);
     logInfo(`SQLite 数据库 path=${DB_PATH}`);
+    startBackgroundSyncScheduler();
   });
 }
 

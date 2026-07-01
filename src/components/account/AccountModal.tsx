@@ -13,6 +13,7 @@ interface AccountModalProps {
   onDeleteAccount: (account: UserAccount) => void;
   onExportBackup: () => void;
   onImportBackup: (file: File) => void;
+  onPreviewBackupImport: (file: File) => void;
 }
 
 export function AccountModal({
@@ -26,7 +27,7 @@ export function AccountModal({
   onRenameAccount,
   onDeleteAccount,
   onExportBackup,
-  onImportBackup,
+  onPreviewBackupImport,
 }: AccountModalProps) {
   const [newName, setNewName] = useState("");
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -143,7 +144,7 @@ export function AccountModal({
               style={{ display: "none" }}
               onChange={(event) => {
                 const file = event.target.files?.[0];
-                if (file) onImportBackup(file);
+                if (file) onPreviewBackupImport(file);
                 event.currentTarget.value = "";
               }}
             />

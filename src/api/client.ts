@@ -4,6 +4,10 @@ export async function api<T = any>(path: string, options: RequestInit = {}): Pro
     ...options,
   });
   const payload = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(payload.error || "操作失败");
+  if (!response.ok) {
+    const error = new Error(payload.error || "操作失败") as Error & { status?: number };
+    error.status = response.status;
+    throw error;
+  }
   return payload;
 }

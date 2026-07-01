@@ -6,6 +6,45 @@
   overflow: auto;
 }
 
+.account-overview {
+  display: grid;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+  padding: 0 0 16px;
+}
+
+.account-overview-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.account-overview-header h2 {
+  margin: 2px 0 0;
+  font-size: 1.25rem;
+}
+
+.account-overview-header > span {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 10px;
+  background: var(--surface-strong);
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 900;
+}
+
+.account-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.account-overview-grid .metric-card {
+  min-height: 86px;
+}
+
 .workspace-loading {
   position: absolute;
   inset: 0;

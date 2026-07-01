@@ -24,3 +24,17 @@ export interface ImportedTradeRow {
   amount: number;
   note?: string | null;
 }
+
+export type DividendType = "cash" | "reinvest";
+
+export interface DividendRecord {
+  id?: number;
+  accountId?: number;
+  fundId?: number;
+  type: DividendType;
+  date: string;
+  amount: number;
+  nav?: number | null;
+  shares?: number | null;
+  note?: string | null;
+}

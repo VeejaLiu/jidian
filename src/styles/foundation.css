@@ -27,6 +27,33 @@
   --buy-pagination-height: 48px;
 }
 
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --bg: #101517;
+    --surface: #172023;
+    --surface-strong: #1f2b2e;
+    --ink: #edf3f4;
+    --muted: #9aabb2;
+    --line: #314247;
+    --primary: #48b8ad;
+    --primary-dark: #75d4cb;
+    --trade-buy: #7aa7ff;
+    --trade-buy-soft: #1a2a44;
+    --trade-sell: #f2b84b;
+    --trade-sell-soft: #3a2b12;
+    --up: #ff7b72;
+    --up-strong: #ffa198;
+    --up-soft: #3a2020;
+    --down: #66d190;
+    --down-strong: #8be9ad;
+    --down-soft: #183223;
+    --neutral-soft: #202a2d;
+    --danger: #ff8b81;
+    --shadow: 0 16px 42px rgba(0, 0, 0, 0.32);
+  }
+}
+
 * {
   box-sizing: border-box;
 }

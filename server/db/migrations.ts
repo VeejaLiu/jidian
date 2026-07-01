@@ -184,6 +184,28 @@ export function migrateStockPriceFields() {
   }
 }
 
+export function migrateDividendRecords() {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS dividend_records (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      account_id INTEGER NOT NULL DEFAULT 1,
+      fund_id INTEGER NOT NULL,
+      dividend_type TEXT NOT NULL CHECK (dividend_type IN ('cash', 'reinvest')),
+      dividend_date TEXT NOT NULL CHECK (date(dividend_date) = dividend_date),
+      amount REAL NOT NULL CHECK (amount > 0),
+      dividend_nav REAL CHECK (dividend_nav IS NULL OR dividend_nav > 0),
+      shares REAL CHECK (shares IS NULL OR shares > 0),
+      note TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (account_id) REFERENCES user_accounts (id) ON DELETE CASCADE,
+      FOREIGN KEY (fund_id) REFERENCES funds (id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_dividend_records_fund_date
+      ON dividend_records (account_id, fund_id, dividend_date DESC, id DESC);
+  `);
+}
+
 export function migrateTradeRecordsForPendingStatus() {
   db.exec(`
     DROP VIEW IF EXISTS fund_trigger_status;

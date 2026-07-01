@@ -3,6 +3,7 @@ import { db } from "../db/database";
 import { getFundById, mapFund } from "../services/funds";
 import { importTradesFromText } from "../services/imports";
 import { assertTradeTimeline, buildTradeInput } from "../services/trades";
+import { createDividend } from "../services/dividends";
 import { getAccountIdFromRequest } from "../services/accounts";
 
 export const tradeRoutes = Router();
@@ -50,6 +51,17 @@ tradeRoutes.post("/api/trades/import", (req, res, next) => {
     const accountId = getAccountIdFromRequest(req);
     const payload = importTradesFromText(String(req.body?.text || ""), accountId);
     res.status(201).json(payload);
+  } catch (error) {
+    next(error);
+  }
+});
+
+tradeRoutes.post("/api/funds/:id/dividends", (req, res, next) => {
+  try {
+    const fundId = Number(req.params.id);
+    const accountId = getAccountIdFromRequest(req);
+    createDividend(fundId, accountId, req.body);
+    res.status(201).json({ fund: mapFund(getFundById(fundId, { accountId, includeHidden: true }), accountId) });
   } catch (error) {
     next(error);
   }
