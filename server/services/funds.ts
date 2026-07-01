@@ -141,6 +141,10 @@ export function getPaginatedNavHistory(fundId: number, page: unknown, pageSize: 
          id,
          date,
          nav,
+         openPrice,
+         closePrice,
+         highPrice,
+         lowPrice,
          accumulatedNav,
          previousNav,
          CASE
@@ -184,6 +188,10 @@ export function getChartData(fundId: number, accountId: number) {
        SELECT
          date,
          nav,
+         openPrice,
+         closePrice,
+         highPrice,
+         lowPrice,
          previousNav,
          CASE
            WHEN previousNav IS NULL OR previousNav <= 0 THEN NULL

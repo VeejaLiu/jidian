@@ -24,6 +24,7 @@ export function NavChart({ fund, data, loading, busy, onViewAllNav }: NavChartPr
   const instanceRef = useRef<echarts.ECharts | null>(null);
   const [rangeKey, setRangeKey] = useState("6m");
   const filteredData = useMemo(() => filterChartData(data, rangeKey), [data, rangeKey]);
+  const renderAsKLine = isStock && filteredData.nav.some(hasStockOhlcData);
 
   useEffect(() => {
     if (!chartRef.current) return undefined;
@@ -43,6 +44,7 @@ export function NavChart({ fund, data, loading, busy, onViewAllNav }: NavChartPr
     const chart = instanceRef.current;
     if (!chart) return;
 
+    const useKLine = isStock && filteredData.nav.some(hasStockOhlcData);
     const dates = filteredData.nav.map((item) => item.date);
     const navPoints = filteredData.nav.map((item) => ({
       value: [item.date, Number(item.nav)],
@@ -82,6 +84,9 @@ export function NavChart({ fund, data, loading, busy, onViewAllNav }: NavChartPr
       hasOpenPosition && Number.isFinite(averageCost) && filteredData.nav.length > 0
         ? filteredData.nav.map((item) => [item.date, averageCost])
         : [];
+    const chartBuyPoints = useKLine ? toCategoryTradePoints(buyPoints, dates) : buyPoints;
+    const chartSellPoints = useKLine ? toCategoryTradePoints(sellPoints, dates) : sellPoints;
+    const chartCostLine = useKLine ? costLine.map((item) => [dates.indexOf(String(item[0])), item[1]]).filter((item) => Number(item[0]) >= 0) : costLine;
 
     chart.setOption(
       {
@@ -103,9 +108,9 @@ export function NavChart({ fund, data, loading, busy, onViewAllNav }: NavChartPr
           },
         },
         xAxis: {
-          type: isStock ? "category" : "time",
-          data: isStock ? dates : undefined,
-          boundaryGap: isStock,
+          type: useKLine ? "category" : "time",
+          data: useKLine ? dates : undefined,
+          boundaryGap: useKLine,
           axisLine: { lineStyle: { color: "#a7b4bc" } },
           axisLabel: { color: "#65727e", formatter: formatChartDate },
         },
@@ -116,7 +121,7 @@ export function NavChart({ fund, data, loading, busy, onViewAllNav }: NavChartPr
           splitLine: { lineStyle: { color: "#edf2f4" } },
         },
         series: [
-          isStock
+          useKLine
             ? {
                 name: "K线",
                 type: "candlestick",
@@ -129,7 +134,7 @@ export function NavChart({ fund, data, loading, busy, onViewAllNav }: NavChartPr
                 },
               }
             : {
-                name: "单位净值",
+                name: isStock ? "价格" : "单位净值",
                 type: "line",
                 data: navPoints,
                 showSymbol: false,
@@ -140,7 +145,7 @@ export function NavChart({ fund, data, loading, busy, onViewAllNav }: NavChartPr
           {
             name: "买入点",
             type: "scatter",
-            data: buyPoints,
+            data: chartBuyPoints,
             symbolSize: 12,
             itemStyle: { color: getCssVar("--trade-buy"), borderColor: "#fff", borderWidth: 2 },
             z: 5,
@@ -148,7 +153,7 @@ export function NavChart({ fund, data, loading, busy, onViewAllNav }: NavChartPr
           {
             name: "卖出点",
             type: "scatter",
-            data: sellPoints,
+            data: chartSellPoints,
             symbol: "diamond",
             symbolSize: 12,
             itemStyle: { color: getCssVar("--trade-sell"), borderColor: "#fff", borderWidth: 2 },
@@ -157,7 +162,7 @@ export function NavChart({ fund, data, loading, busy, onViewAllNav }: NavChartPr
           {
             name: "成本价",
             type: "line",
-            data: costLine,
+            data: chartCostLine,
             showSymbol: false,
             smooth: false,
             lineStyle: { width: 2, type: "dashed", color: getCssVar("--down-strong") },
@@ -183,14 +188,14 @@ export function NavChart({ fund, data, loading, busy, onViewAllNav }: NavChartPr
     ? "正在加载图表..."
     : navCount === 0
       ? `暂无${isStock ? "价格" : "净值"}数据`
-      : `${filteredData.range.label}：${navCount} 条${isStock ? "价格" : "净值"}记录，买入 ${buyCount} 次，卖出 ${sellCount} 次${pendingCount ? `，待确认 ${pendingCount} 次` : ""}${hasAverageCost ? `，${displayAverageCostLabel} ${formatNav(data.position?.displayAverageCost)}` : ""}${navCount === totalNavCount ? "" : ` / 共 ${totalNavCount} 条`}`;
+      : `${filteredData.range.label}：${navCount} 条${isStock ? (renderAsKLine ? "K 线" : "价格") : "净值"}记录，买入 ${buyCount} 次，卖出 ${sellCount} 次${pendingCount ? `，待确认 ${pendingCount} 次` : ""}${hasAverageCost ? `，${displayAverageCostLabel} ${formatNav(data.position?.displayAverageCost)}` : ""}${navCount === totalNavCount ? "" : ` / 共 ${totalNavCount} 条`}`;
 
   return (
     <section className="chart-block">
       <div className="table-title">
         <div>
           <div className="title-with-actions">
-            <h3>{isStock ? "K 线走势" : "净值走势"}</h3>
+            <h3>{isStock ? (renderAsKLine ? "K 线走势" : "价格走势") : "净值走势"}</h3>
             <button className="text-action" type="button" disabled={busy} onClick={onViewAllNav}>
               查看更多历史
             </button>
@@ -219,7 +224,7 @@ export function NavChart({ fund, data, loading, busy, onViewAllNav }: NavChartPr
           </div>
         )}
         {!loading && navCount === 0 && <div className="chart-empty">暂无可展示的{isStock ? "价格" : "净值"}走势</div>}
-        <div className="chart-canvas" ref={chartRef} aria-label={`${fund.name}${isStock ? "K 线" : "净值"}走势图`} />
+        <div className="chart-canvas" ref={chartRef} aria-label={`${fund.name}${isStock ? (renderAsKLine ? "K 线" : "价格") : "净值"}走势图`} />
       </div>
     </section>
   );
@@ -250,7 +255,7 @@ function renderChartTooltip(params: any[]) {
 }
 
 function renderKLineTooltipSection(param: any) {
-  const values = Array.isArray(param.value) ? param.value : [];
+  const values = getKLineValues(param);
   const [open, close, low, high] = values;
   const change = getDailyChange(param.data?.dailyChangePercent);
   return `
@@ -273,6 +278,16 @@ function renderKLineTooltipSection(param: any) {
       </div>
     </div>
   `;
+}
+
+function getKLineValues(param: any) {
+  const dataValue = param.data?.value;
+  if (Array.isArray(dataValue) && dataValue.length >= 4) return dataValue;
+
+  const value = param.value;
+  if (!Array.isArray(value)) return [];
+  if (value.length >= 5 && typeof value[0] === "number") return value.slice(1, 5);
+  return value.slice(0, 4);
 }
 
 function renderNavTooltipSection(param: any) {
@@ -304,9 +319,30 @@ function getStockClose(point: NavPoint) {
   return getStockPriceValue(point.closePrice, Number(point.nav));
 }
 
+function hasStockOhlcData(point: NavPoint) {
+  return [point.openPrice, point.closePrice, point.highPrice, point.lowPrice].every((value) => {
+    const number = Number(value);
+    return Number.isFinite(number) && number > 0;
+  });
+}
+
 function getStockPriceValue(value: unknown, fallback: number) {
   const number = Number(value);
   return Number.isFinite(number) && number > 0 ? number : fallback;
+}
+
+function toCategoryTradePoints(points: any[], dates: string[]) {
+  return points
+    .map((point) => {
+      const date = String(point.value?.[0] || "");
+      const index = dates.indexOf(date);
+      if (index < 0) return null;
+      return {
+        ...point,
+        value: [index, point.value?.[1]],
+      };
+    })
+    .filter(Boolean);
 }
 
 function renderCostTooltipSection(param: any) {
