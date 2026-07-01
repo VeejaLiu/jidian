@@ -66,6 +66,8 @@ npm run desktop:build
 npm run desktop:dev
 ```
 
+开发模式会同时启动后端服务 `http://127.0.0.1:4173`、Vite 前端 `http://127.0.0.1:5173` 和 Electron 窗口。Electron 和浏览器打开 `http://127.0.0.1:5173` 时都会访问同一个开发后端，因此备份导入等 `/api` 请求不需要手动改端口。
+
 这个命令会启动：
 
 - Vite 前端开发服务器

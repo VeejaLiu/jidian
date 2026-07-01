@@ -5,6 +5,7 @@ const net = require("node:net");
 const { app, BrowserWindow, dialog } = require("electron");
 
 const HOST = "127.0.0.1";
+const DEV_SERVER_PORT = 4173;
 const HEALTH_PATH = "/api/health";
 const HEALTH_TIMEOUT_MS = 30000;
 const HEALTH_POLL_INTERVAL_MS = 400;
@@ -19,7 +20,7 @@ let mainLogPath = "";
 let errorLogPath = "";
 let windowStatePath = "";
 
-const gotSingleInstanceLock = app.requestSingleInstanceLock();
+const gotSingleInstanceLock = app.isPackaged ? app.requestSingleInstanceLock() : true;
 if (!gotSingleInstanceLock) {
   app.quit();
 }
@@ -188,7 +189,7 @@ async function startEmbeddedServer() {
   const resourceRootDir = resolveResourceRoot(rootDir);
   const dataDir = app.isPackaged ? ensureUserDataDir() : ensureLocalDataDir(rootDir);
   const logDir = ensureDesktopLogDir();
-  serverPort = await pickServerPort();
+  serverPort = app.isPackaged ? await pickServerPort() : DEV_SERVER_PORT;
 
   const env = {
     ...process.env,
@@ -280,11 +281,15 @@ function createErrorWindow(message) {
 }
 
 async function createMainWindow() {
-  try {
-    await startEmbeddedServer();
-  } catch (error) {
-    mainWindow = createErrorWindow(error instanceof Error ? error.message : "未知错误");
-    return;
+  if (app.isPackaged) {
+    try {
+      await startEmbeddedServer();
+    } catch (error) {
+      mainWindow = createErrorWindow(error instanceof Error ? error.message : "未知错误");
+      return;
+    }
+  } else {
+    serverPort = DEV_SERVER_PORT;
   }
 
   const previousWindowState = loadWindowState();
@@ -302,6 +307,7 @@ async function createMainWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
+      additionalArguments: [`--jidian-api-origin=${process.env.JIDIAN_API_ORIGIN || `http://${HOST}:${serverPort}`}`],
     },
   });
 
@@ -336,7 +342,7 @@ async function createMainWindow() {
     mainWindow = null;
   });
 
-  await mainWindow.loadURL(`http://${HOST}:${serverPort}`);
+  await mainWindow.loadURL(app.isPackaged ? `http://${HOST}:${serverPort}` : "http://127.0.0.1:5173");
 }
 
 function stopEmbeddedServer() {

@@ -8,7 +8,7 @@
     "build:server": "tsc -p tsconfig.server.json",
     "start": "npm run build && NODE_ENV=production tsx server/index.ts",
     "serve": "NODE_ENV=production tsx server/index.ts",
-    "desktop:dev": "concurrently -k -n vite,electron -c blue,green \"vite\" \"wait-on tcp:127.0.0.1:5173 && cross-env NODE_ENV=development APP_RUNTIME=desktop electron .\"",
+    "desktop:dev": "concurrently -k -n server,vite,electron -c yellow,blue,green \"cross-env PORT=4173 NODE_ENV=development APP_RUNTIME=desktop tsx server/index.ts\" \"vite --host 127.0.0.1 --strictPort\" \"wait-on tcp:127.0.0.1:4173 tcp:127.0.0.1:5173 && cross-env NODE_ENV=development APP_RUNTIME=desktop JIDIAN_API_ORIGIN=http://127.0.0.1:4173 electron .\"",
     "desktop:build": "npm run build && npm run build:server && electron-builder --config electron-builder.config.js --mac zip dmg --arm64 && node electron/restore-native-deps.js",
     "desktop:build:dir": "npm run build && npm run build:server && electron-builder --config electron-builder.config.js --dir --arm64 && node electron/restore-native-deps.js",
     "desktop:build:universal": "npm run build && npm run build:server && electron-builder --config electron-builder.config.js --mac zip dmg --universal && node electron/restore-native-deps.js",
