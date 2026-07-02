@@ -37,6 +37,73 @@ function defaultAccountId() {
   return Number(result.lastInsertRowid);
 }
 
+function recreateTradeViews() {
+  db.exec(`
+    DROP VIEW IF EXISTS fund_trigger_status;
+    DROP VIEW IF EXISTS latest_buy;
+
+    CREATE VIEW latest_buy AS
+    SELECT
+      tr.id,
+      tr.account_id,
+      tr.fund_id,
+      tr.trade_date AS buy_date,
+      tr.trade_nav AS buy_nav,
+      tr.amount,
+      tr.shares,
+      tr.note,
+      tr.created_at
+    FROM trade_records tr
+    WHERE NOT EXISTS (
+      SELECT 1
+      FROM trade_records newer
+      WHERE newer.account_id = tr.account_id
+        AND newer.fund_id = tr.fund_id
+        AND newer.trade_type = 'buy'
+        AND newer.status = 'confirmed'
+        AND (
+          newer.trade_date > tr.trade_date
+          OR (newer.trade_date = tr.trade_date AND newer.id > tr.id)
+        )
+    )
+      AND tr.trade_type = 'buy'
+      AND tr.status = 'confirmed';
+
+    CREATE VIEW fund_trigger_status AS
+    SELECT
+      uf.account_id,
+      f.id AS fund_id,
+      f.code,
+      f.name,
+      COALESCE(uf.drop_rate, ss.drop_rate, 0.04) AS drop_rate,
+      lb.buy_date AS last_buy_date,
+      lb.buy_nav AS last_buy_nav,
+      ln.nav_date AS latest_nav_date,
+      ln.unit_nav AS latest_nav,
+      ROUND(lb.buy_nav * (1 - COALESCE(uf.drop_rate, ss.drop_rate, 0.04)), 6) AS trigger_nav,
+      CASE
+        WHEN lb.buy_nav IS NULL OR ln.unit_nav IS NULL THEN NULL
+        WHEN lb.buy_nav * (1 - COALESCE(uf.drop_rate, ss.drop_rate, 0.04)) >= ln.unit_nav THEN 0
+        ELSE ROUND(
+          (1 - (lb.buy_nav * (1 - COALESCE(uf.drop_rate, ss.drop_rate, 0.04)) / ln.unit_nav)) * 100,
+          4
+        )
+      END AS required_drop_percent,
+      CASE
+        WHEN lb.buy_nav IS NULL THEN 'missing_buy'
+        WHEN ln.unit_nav IS NULL THEN 'missing_nav'
+        WHEN lb.buy_nav * (1 - COALESCE(uf.drop_rate, ss.drop_rate, 0.04)) >= ln.unit_nav THEN 'triggered'
+        ELSE 'waiting'
+      END AS status
+    FROM funds f
+    JOIN user_funds uf ON uf.fund_id = f.id
+    LEFT JOIN strategy_settings ss ON ss.fund_id = f.id
+    LEFT JOIN latest_buy lb ON lb.account_id = uf.account_id AND lb.fund_id = f.id
+    LEFT JOIN latest_nav ln ON ln.fund_id = f.id
+    WHERE uf.is_active = 1;
+  `);
+}
+
 export function migrateAccounts() {
   db.exec(`
     CREATE TABLE IF NOT EXISTS app_metadata (
@@ -174,6 +241,11 @@ export function migrateTradeAmountNullable() {
   if (!amountColumn || amountColumn.notnull === 0) return;
 
   db.exec(`
+    DROP VIEW IF EXISTS fund_trigger_status;
+    DROP VIEW IF EXISTS latest_buy;
+  `);
+
+  db.exec(`
     PRAGMA foreign_keys = OFF;
 
     DROP TABLE IF EXISTS trade_records_new;
@@ -242,6 +314,8 @@ export function migrateTradeAmountNullable() {
 
     PRAGMA foreign_keys = ON;
   `);
+
+  recreateTradeViews();
 }
 
 export function migrateStockPriceFields() {
@@ -451,67 +525,7 @@ export function migrateTradeRecordsForPendingStatus() {
 	          AND tr.account_id = br.account_id
 	      );
 
-    DROP VIEW IF EXISTS fund_trigger_status;
-    DROP VIEW IF EXISTS latest_buy;
-
-    CREATE VIEW latest_buy AS
-    SELECT
-      tr.id,
-      tr.account_id,
-      tr.fund_id,
-      tr.trade_date AS buy_date,
-      tr.trade_nav AS buy_nav,
-      tr.amount,
-      tr.shares,
-      tr.note,
-      tr.created_at
-    FROM trade_records tr
-    WHERE NOT EXISTS (
-      SELECT 1
-      FROM trade_records newer
-      WHERE newer.account_id = tr.account_id
-        AND newer.fund_id = tr.fund_id
-        AND newer.trade_type = 'buy'
-        AND newer.status = 'confirmed'
-        AND (
-          newer.trade_date > tr.trade_date
-          OR (newer.trade_date = tr.trade_date AND newer.id > tr.id)
-        )
-    )
-      AND tr.trade_type = 'buy'
-      AND tr.status = 'confirmed';
-
-    CREATE VIEW fund_trigger_status AS
-    SELECT
-      uf.account_id,
-      f.id AS fund_id,
-      f.code,
-      f.name,
-      COALESCE(uf.drop_rate, ss.drop_rate, 0.04) AS drop_rate,
-      lb.buy_date AS last_buy_date,
-      lb.buy_nav AS last_buy_nav,
-      ln.nav_date AS latest_nav_date,
-      ln.unit_nav AS latest_nav,
-      ROUND(lb.buy_nav * (1 - COALESCE(uf.drop_rate, ss.drop_rate, 0.04)), 6) AS trigger_nav,
-      CASE
-        WHEN lb.buy_nav IS NULL OR ln.unit_nav IS NULL THEN NULL
-        WHEN lb.buy_nav * (1 - COALESCE(uf.drop_rate, ss.drop_rate, 0.04)) >= ln.unit_nav THEN 0
-        ELSE ROUND(
-          (1 - (lb.buy_nav * (1 - COALESCE(uf.drop_rate, ss.drop_rate, 0.04)) / ln.unit_nav)) * 100,
-          4
-        )
-      END AS required_drop_percent,
-      CASE
-        WHEN lb.buy_nav IS NULL THEN 'missing_buy'
-        WHEN ln.unit_nav IS NULL THEN 'missing_nav'
-        WHEN lb.buy_nav * (1 - COALESCE(uf.drop_rate, ss.drop_rate, 0.04)) >= ln.unit_nav THEN 'triggered'
-        ELSE 'waiting'
-      END AS status
-    FROM funds f
-    JOIN user_funds uf ON uf.fund_id = f.id
-    LEFT JOIN strategy_settings ss ON ss.fund_id = f.id
-    LEFT JOIN latest_buy lb ON lb.account_id = uf.account_id AND lb.fund_id = f.id
-    LEFT JOIN latest_nav ln ON ln.fund_id = f.id
-    WHERE uf.is_active = 1;
   `);
+
+  recreateTradeViews();
 }
