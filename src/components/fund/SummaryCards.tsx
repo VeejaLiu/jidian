@@ -60,50 +60,15 @@ export function SummaryCards({ fund }: SummaryCardsProps) {
 
   return (
     <section className="summary-stack" aria-label="持仓概览">
-      <div className="summary-band summary-band-total">
-        <div className="summary-band-header">
-          <p className="summary-band-eyebrow">累计</p>
-          <h3>总体收益</h3>
-        </div>
-        <div className="summary-band-grid">
-          <article className={`metric-card metric-card-hero ${profitTone === "up" ? "metric-card-positive" : profitTone === "down" ? "metric-card-negative" : ""}`}>
-            <span>累计收益</span>
-            <strong>{Number.isFinite(totalProfit) ? formatMoney(totalProfit) : "待计算"}</strong>
-          </article>
-          <article className={`metric-card metric-card-hero ${profitRateTone === "up" ? "metric-card-positive" : profitRateTone === "down" ? "metric-card-negative" : ""}`}>
-            <span>累计收益率</span>
-            <strong>{Number.isFinite(totalProfitRate) ? formatPercent(totalProfitRate) : "待计算"}</strong>
-          </article>
-          <article className="metric-card metric-card-hero">
-            <span>已实现收益</span>
-            <strong>{Number.isFinite(realizedProfit) ? formatMoney(realizedProfit) : "待计算"}</strong>
-          </article>
-          <article className="metric-card metric-card-hero">
-            <span>分红收益</span>
-            <strong>{Number.isFinite(dividendIncome) ? formatMoney(dividendIncome) : "0.00"}</strong>
-          </article>
-        </div>
-      </div>
-
       <div className="summary-band summary-band-holding">
         <div className="summary-band-header">
           <p className="summary-band-eyebrow">当前持有</p>
           <h3>持仓表现</h3>
         </div>
-        <div className="summary-band-grid">
-          <article className="metric-card metric-card-group metric-card-hero cost">
-            <div className="metric-card-pair">
-              <span>持有成本</span>
-              <strong>{Number.isFinite(totalAmount) ? formatMoney(totalAmount) : "待填写"}</strong>
-            </div>
-            <div className="metric-card-pair metric-card-pair-subtle">
-              <span>{displayAverageCostLabel}</span>
-              <strong>{hasAverageCost ? formatNav(displayAverageCost) : "待买入"}</strong>
-            </div>
-          </article>
+        <div className="summary-band-grid summary-band-grid-primary">
           <article className="metric-card metric-card-hero">
-            <span>{isStock ? "持有股数" : "持有份额"}</span>
-            <strong>{Number.isFinite(totalShares) ? formatUnits(totalShares, fund.assetType) : "待填写"}</strong>
+            <span>当前持有市值</span>
+            <strong>{Number.isFinite(holdingValue) ? formatMoney(holdingValue) : "待计算"}</strong>
           </article>
           <article className={`metric-card metric-card-hero ${holdingProfitTone === "up" ? "metric-card-positive" : holdingProfitTone === "down" ? "metric-card-negative" : ""}`}>
             <span>持有收益</span>
@@ -113,14 +78,26 @@ export function SummaryCards({ fund }: SummaryCardsProps) {
             <span>持有收益率</span>
             <strong>{Number.isFinite(holdingProfitRate) ? formatPercent(holdingProfitRate) : "待计算"}</strong>
           </article>
-          <article className="metric-card metric-card-compact">
-            <span>持有天数</span>
-            <strong>{Number.isFinite(holdingDays) ? `${holdingDays} 天` : "待填写"}</strong>
+        </div>
+        <div className="summary-band-grid summary-band-grid-secondary">
+          <article className="metric-card metric-card-group metric-card-compact">
+            <div className="metric-card-pair">
+              <span>持有成本</span>
+              <strong>{Number.isFinite(totalAmount) ? formatMoney(totalAmount) : "待填写"}</strong>
+            </div>
+            <div className="metric-card-pair metric-card-pair-subtle">
+              <span>{isStock ? "持有股数" : "持有份额"}</span>
+              <strong>{Number.isFinite(totalShares) ? formatUnits(totalShares, fund.assetType) : "待填写"}</strong>
+            </div>
+            <div className="metric-card-pair metric-card-pair-subtle">
+              <span>持有天数</span>
+              <strong>{Number.isFinite(holdingDays) ? `${holdingDays} 天` : "待填写"}</strong>
+            </div>
           </article>
           <article className="metric-card metric-card-group metric-card-compact">
             <div className="metric-card-pair">
-              <span>当前持有市值</span>
-              <strong>{Number.isFinite(holdingValue) ? formatMoney(holdingValue) : "待计算"}</strong>
+              <span>{displayAverageCostLabel}</span>
+              <strong>{hasAverageCost ? formatNav(displayAverageCost) : "待买入"}</strong>
             </div>
             <div className="metric-card-pair metric-card-pair-subtle">
               <span>{isStock ? "最新价格" : "最新净值"}</span>
@@ -136,27 +113,55 @@ export function SummaryCards({ fund }: SummaryCardsProps) {
           <h3>触发判断</h3>
         </div>
         <div className="summary-strategy-grid">
-          <article className="metric-card metric-card-compact">
-          <span>{isStock ? "最近成交价" : "上次买入净值"}</span>
-          <strong>{hasBuy ? formatNav(lastBuyPrice) : "待填写"}</strong>
-        </article>
-          <article className="metric-card metric-card-compact">
-          <span>{isStock ? "最新价格" : "下一触发净值"}</span>
-          <strong>{hasNav ? formatNav(isStock ? latestPrice : triggerPrice) : "待填写"}</strong>
-        </article>
-          <article className={`metric-card metric-card-compact ${requiredDropTone === "down" ? "metric-card-negative" : ""}`}>
-          <span>{isStock ? "策略提示" : "今日需达到跌幅"}</span>
-          <strong>{requiredDrop}</strong>
-        </article>
           <article className="metric-card metric-card-compact trigger-card">
-          <span>判断</span>
-          <div className="trigger-tags">
-            <span className={`status-chip ${triggerTone}`}>{triggerStatus}</span>
-            {currentMove && <CurrentMoveChip move={currentMove} />}
-            {!isStock && hasBuy && hasNav && <span className="status-chip neutral">触发价 {formatNav(triggerPrice)}</span>}
-          </div>
-        </article>
+            <span>当前判断</span>
+            <div className="trigger-tags">
+              <span className={`status-chip ${triggerTone}`}>{triggerStatus}</span>
+              {currentMove && <CurrentMoveChip move={currentMove} />}
+            </div>
+          </article>
+          <article className={`metric-card metric-card-compact ${requiredDropTone === "down" ? "metric-card-negative" : ""}`}>
+            <span>{isStock ? "策略提示" : "今日需达到跌幅"}</span>
+            <strong>{requiredDrop}</strong>
+          </article>
+          <article className="metric-card metric-card-compact">
+            <span>{isStock ? "最新价格" : "下一触发净值"}</span>
+            <strong>{hasNav ? formatNav(isStock ? latestPrice : triggerPrice) : "待填写"}</strong>
+          </article>
+          <article className="metric-card metric-card-compact">
+            <span>{isStock ? "最近成交价" : "上次买入净值"}</span>
+            <strong>{hasBuy ? formatNav(lastBuyPrice) : "待填写"}</strong>
+          </article>
+        </div>
       </div>
+
+      <div className="summary-band summary-band-total">
+        <div className="summary-band-header">
+          <p className="summary-band-eyebrow">累计</p>
+          <h3>总体收益</h3>
+        </div>
+        <div className="summary-band-grid summary-band-grid-secondary">
+          <article className={`metric-card metric-card-group metric-card-compact ${profitTone === "up" ? "metric-card-positive" : profitTone === "down" ? "metric-card-negative" : ""}`}>
+            <div className="metric-card-pair">
+              <span>累计收益</span>
+              <strong>{Number.isFinite(totalProfit) ? formatMoney(totalProfit) : "待计算"}</strong>
+            </div>
+            <div className="metric-card-pair metric-card-pair-subtle">
+              <span>累计收益率</span>
+              <strong>{Number.isFinite(totalProfitRate) ? formatPercent(totalProfitRate) : "待计算"}</strong>
+            </div>
+          </article>
+          <article className="metric-card metric-card-group metric-card-compact">
+            <div className="metric-card-pair">
+              <span>已实现收益</span>
+              <strong>{Number.isFinite(realizedProfit) ? formatMoney(realizedProfit) : "待计算"}</strong>
+            </div>
+            <div className="metric-card-pair metric-card-pair-subtle">
+              <span>分红收益</span>
+              <strong>{Number.isFinite(dividendIncome) ? formatMoney(dividendIncome) : "0.00"}</strong>
+            </div>
+          </article>
+        </div>
       </div>
     </section>
   );
