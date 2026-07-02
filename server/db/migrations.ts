@@ -168,6 +168,82 @@ export function migrateTradeFees() {
   }
 }
 
+export function migrateTradeAmountNullable() {
+  const columns = tableExists("trade_records") ? (db.prepare("PRAGMA table_info(trade_records)").all() as Array<{ name: string; notnull: number }>) : [];
+  const amountColumn = columns.find((column) => column.name === "amount");
+  if (!amountColumn || amountColumn.notnull === 0) return;
+
+  db.exec(`
+    PRAGMA foreign_keys = OFF;
+
+    DROP TABLE IF EXISTS trade_records_new;
+
+    CREATE TABLE IF NOT EXISTS trade_records_new (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      account_id INTEGER NOT NULL DEFAULT 1,
+      fund_id INTEGER NOT NULL,
+      trade_type TEXT NOT NULL CHECK (trade_type IN ('buy', 'sell')),
+      trade_date TEXT NOT NULL CHECK (date(trade_date) = trade_date),
+      trade_nav REAL CHECK (trade_nav IS NULL OR trade_nav > 0),
+      amount REAL CHECK (amount IS NULL OR amount > 0),
+      fee REAL NOT NULL DEFAULT 0 CHECK (fee >= 0),
+      shares REAL CHECK (shares IS NULL OR shares > 0),
+      status TEXT NOT NULL DEFAULT 'confirmed' CHECK (status IN ('pending', 'confirmed')),
+      note TEXT,
+      source_buy_id INTEGER,
+      confirmed_at TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (account_id) REFERENCES user_accounts (id) ON DELETE CASCADE,
+      FOREIGN KEY (fund_id) REFERENCES funds (id) ON DELETE CASCADE
+    );
+
+    INSERT INTO trade_records_new (
+      id,
+      account_id,
+      fund_id,
+      trade_type,
+      trade_date,
+      trade_nav,
+      amount,
+      fee,
+      shares,
+      status,
+      note,
+      source_buy_id,
+      confirmed_at,
+      created_at
+    )
+    SELECT
+      id,
+      account_id,
+      fund_id,
+      trade_type,
+      trade_date,
+      trade_nav,
+      amount,
+      COALESCE(fee, 0),
+      shares,
+      COALESCE(status, 'confirmed'),
+      note,
+      source_buy_id,
+      confirmed_at,
+      created_at
+    FROM trade_records;
+
+    DROP TABLE trade_records;
+    ALTER TABLE trade_records_new RENAME TO trade_records;
+
+    CREATE INDEX IF NOT EXISTS idx_trade_records_fund_date
+      ON trade_records (account_id, fund_id, trade_date DESC, id DESC);
+
+    CREATE INDEX IF NOT EXISTS idx_trade_records_source_buy
+      ON trade_records (source_buy_id)
+      WHERE source_buy_id IS NOT NULL;
+
+    PRAGMA foreign_keys = ON;
+  `);
+}
+
 export function migrateStockPriceFields() {
   const navColumns = tableExists("nav_history") ? columnNames("nav_history") : [];
   if (navColumns.length && !navColumns.includes("open_price")) {
@@ -277,7 +353,7 @@ export function migrateTradeRecordsForPendingStatus() {
         trade_type TEXT NOT NULL CHECK (trade_type IN ('buy', 'sell')),
         trade_date TEXT NOT NULL CHECK (date(trade_date) = trade_date),
         trade_nav REAL CHECK (trade_nav IS NULL OR trade_nav > 0),
-        amount REAL NOT NULL CHECK (amount > 0),
+        amount REAL CHECK (amount IS NULL OR amount > 0),
         fee REAL NOT NULL DEFAULT 0 CHECK (fee >= 0),
         shares REAL CHECK (shares IS NULL OR shares > 0),
         status TEXT NOT NULL DEFAULT 'confirmed' CHECK (status IN ('pending', 'confirmed')),

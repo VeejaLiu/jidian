@@ -4,7 +4,7 @@ import { toHttpError } from "../utils/httpError";
 import { logInfo, logWarn } from "../utils/logger";
 import { getFundById } from "./funds";
 import { fetchNavHistory, fetchStockPriceHistory, type PriceHistoryFetchResult } from "./eastmoney";
-import { assertTradeTimeline } from "./trades";
+import { assertTradeTimeline, calculateFundTradeAmount, calculateFundTradeShares } from "./trades";
 import { getSyncDecision, navSyncJobs, navSyncTouchedAt } from "./syncState";
 
 const BACKGROUND_SYNC_CHECK_INTERVAL_MS = Number(process.env.BACKGROUND_SYNC_CHECK_INTERVAL_MS || 30 * 60 * 1000);
@@ -113,12 +113,14 @@ function confirmPendingTrades(fundId: number) {
   const pendingTrades = db
     .prepare(
       `SELECT id, trade_type AS type, trade_date AS date, amount
+       , fee
+       , shares
        , account_id AS accountId
        FROM trade_records
        WHERE fund_id = ?
          AND status = 'pending'`,
     )
-    .all(fundId) as Array<{ id: number; accountId: number; type: "buy" | "sell"; date: string; amount: number }>;
+    .all(fundId) as Array<{ id: number; accountId: number; type: "buy" | "sell"; date: string; amount: number | null; fee: number; shares: number | null }>;
 
   const navForDate = db.prepare(
     "SELECT unit_nav FROM nav_history WHERE fund_id = ? AND nav_date = ?",
@@ -126,6 +128,7 @@ function confirmPendingTrades(fundId: number) {
   const confirmTrade = db.prepare(
     `UPDATE trade_records
      SET trade_nav = ?,
+         amount = ?,
          shares = ?,
          status = 'confirmed',
          confirmed_at = ?
@@ -139,7 +142,16 @@ function confirmPendingTrades(fundId: number) {
     const nav = Number(navRow?.unit_nav);
     if (!Number.isFinite(nav) || nav <= 0) return;
 
-    const shares = trade.amount / nav;
+    const fee = Number(trade.fee || 0);
+    const amount = trade.amount == null ? null : Number(trade.amount);
+    const shares = trade.shares == null ? null : Number(trade.shares);
+    const confirmedShares = trade.type === "buy"
+      ? calculateFundTradeShares("buy", Number(amount), fee, nav)
+      : (Number.isFinite(shares) && Number(shares) > 0 ? shares : null);
+    const confirmedAmount = trade.type === "buy"
+      ? amount
+      : (confirmedShares == null ? null : calculateFundTradeAmount("sell", confirmedShares, fee, nav));
+    if (!Number.isFinite(Number(confirmedShares)) || Number(confirmedShares) <= 0 || !Number.isFinite(Number(confirmedAmount)) || Number(confirmedAmount) <= 0) return;
     try {
       assertTradeTimeline(
         fundId,
@@ -149,8 +161,8 @@ function confirmPendingTrades(fundId: number) {
           type: trade.type,
           date: trade.date,
           nav,
-          amount: trade.amount,
-          shares,
+          amount: Number(confirmedAmount),
+          shares: Number(confirmedShares),
           status: "confirmed",
         },
         trade.id,
@@ -160,7 +172,7 @@ function confirmPendingTrades(fundId: number) {
       return;
     }
 
-    confirmTrade.run(nav, shares, confirmedAt, trade.id);
+    confirmTrade.run(nav, Number(confirmedAmount), Number(confirmedShares), confirmedAt, trade.id);
     confirmed += 1;
   });
 

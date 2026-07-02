@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { api } from "../api/client";
 import { MIN_NAV_MODAL_LOADING_MS } from "../constants/app";
+import { notifyError } from "../lib/notifications";
 import type { NavModalState } from "../components/nav/NavHistoryModal";
 import type { Fund, NavHistoryPage } from "../types/fund";
 
@@ -51,21 +52,21 @@ export function useNavHistoryModal() {
     setActiveFundId(fund.id);
     setNavModal((current) => ({ ...current, open: true, page: 1, rows: [], total: 0, totalPages: 1 }));
     loadNavPage(fund.id, 1).catch((error) =>
-      window.alert(error instanceof Error ? error.message : "操作失败"),
+      notifyError(error instanceof Error ? error.message : "操作失败"),
     );
   }, [loadNavPage]);
 
   const handlePrevNavPage = useCallback(() => {
     if (!activeFundId || navModal.page <= 1) return;
     loadNavPage(activeFundId, navModal.page - 1).catch((error) =>
-      window.alert(error instanceof Error ? error.message : "操作失败"),
+      notifyError(error instanceof Error ? error.message : "操作失败"),
     );
   }, [activeFundId, loadNavPage, navModal.page]);
 
   const handleNextNavPage = useCallback(() => {
     if (!activeFundId || navModal.page >= navModal.totalPages) return;
     loadNavPage(activeFundId, navModal.page + 1).catch((error) =>
-      window.alert(error instanceof Error ? error.message : "操作失败"),
+      notifyError(error instanceof Error ? error.message : "操作失败"),
     );
   }, [activeFundId, loadNavPage, navModal.page, navModal.totalPages]);
 

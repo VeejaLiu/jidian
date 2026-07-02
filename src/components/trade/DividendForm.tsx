@@ -36,7 +36,7 @@ export function DividendForm({
   onSubmit,
 }: DividendFormProps) {
   return (
-    <form className="data-form dividend-form" onSubmit={onSubmit}>
+    <form className="data-form dividend-form" noValidate onSubmit={onSubmit}>
       <h3>添加分红</h3>
       <div className="trade-type-switch" aria-label="分红类型">
         <button className={type === "cash" ? "active" : ""} type="button" disabled={busy} onClick={() => onTypeChange("cash")}>

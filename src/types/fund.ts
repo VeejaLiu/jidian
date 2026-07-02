@@ -39,7 +39,7 @@ export interface TradeRecord {
   type: TradeType;
   date: string;
   nav: number | null;
-  amount: number;
+  amount: number | null;
   fee?: number | null;
   shares: number | null;
   status?: "pending" | "confirmed";

@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState, type FormEvent } from "react";
 import { api } from "../api/client";
+import { notifyError } from "../lib/notifications";
 import type { AssetDraft, Fund } from "../types/fund";
 
 type RunWithBusy = <T>(label: string, action: () => Promise<T>) => Promise<T | null>;
@@ -73,7 +74,7 @@ export function useAssets({
       setHiddenFunds(nextFunds);
       return nextFunds;
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : "操作失败");
+      notifyError(error instanceof Error ? error.message : "操作失败");
     } finally {
       setHiddenFundsLoading(false);
     }
@@ -122,7 +123,7 @@ export function useAssets({
         await loadAccountSummary();
         refreshChart();
       } catch (error) {
-        window.alert(error instanceof Error ? error.message : "操作失败");
+        notifyError(error instanceof Error ? error.message : "操作失败");
       } finally {
         setAddingFundBusy(false);
       }

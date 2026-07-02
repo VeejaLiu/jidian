@@ -98,7 +98,7 @@ export function AccountModal({
                 </button>
 
                 {isEditing ? (
-                  <form className="account-edit-form" onSubmit={(event) => submitRename(event, account)}>
+                  <form className="account-edit-form" noValidate onSubmit={(event) => submitRename(event, account)}>
                     <input value={editingName} onChange={(event) => setEditingName(event.target.value)} autoFocus disabled={busy} />
                     <button className="secondary-button" type="submit" disabled={busy}>保存</button>
                     <button className="secondary-button neutral-button" type="button" disabled={busy} onClick={() => setEditingId(null)}>取消</button>
@@ -121,7 +121,7 @@ export function AccountModal({
           })}
         </div>
 
-        <form className="account-create-form" onSubmit={submitNewAccount}>
+        <form className="account-create-form" noValidate onSubmit={submitNewAccount}>
           <label>
             <span>添加账户</span>
             <input value={newName} onChange={(event) => setNewName(event.target.value)} placeholder="例如：我的账户 / 家人账户" disabled={busy} />

@@ -3,6 +3,27 @@ import type { DividendRecord, TradeRecord } from "../types";
 import { toHttpError } from "../utils/httpError";
 import { assertDate, assertPositiveNumber, cleanText, optionalPositiveNumber } from "../utils/validators";
 
+export function calculateFundTradeShares(type: "buy" | "sell", amount: number, fee: number, nav: number) {
+  if (!Number.isFinite(amount) || amount <= 0 || !Number.isFinite(fee) || fee < 0 || !Number.isFinite(nav) || nav <= 0) {
+    return null;
+  }
+
+  const netAmount = type === "buy" ? amount - fee : amount + fee;
+  if (netAmount <= 0) return null;
+  return netAmount / nav;
+}
+
+export function calculateFundTradeAmount(type: "buy" | "sell", shares: number, fee: number, nav: number) {
+  if (!Number.isFinite(shares) || shares <= 0 || !Number.isFinite(fee) || fee < 0 || !Number.isFinite(nav) || nav <= 0) {
+    return null;
+  }
+
+  const grossAmount = shares * nav;
+  const netAmount = type === "buy" ? grossAmount + fee : grossAmount - fee;
+  if (netAmount <= 0) return null;
+  return Number(netAmount.toFixed(2));
+}
+
 export function listTrades(fundId: number, accountId: number, order: "ASC" | "DESC" = "DESC") {
   const direction = order === "ASC" ? "ASC" : "DESC";
   return db
@@ -177,7 +198,7 @@ export function buildTradeInput(fundId: number, body: any, forcedType: "buy" | "
   const asset = db.prepare("SELECT asset_type FROM funds WHERE id = ?").get(fundId) as { asset_type?: string } | undefined;
   const isStock = asset?.asset_type === "stock";
   const tradeDate = assertDate(body.date, "交易日期");
-  let amount = 0;
+  let amount: number | null = null;
   let fee = 0;
   let nav = optionalPositiveNumber(body.nav, isStock ? "成交价格" : "交易净值");
   let shares = optionalPositiveNumber(body.shares, isStock ? "成交股数" : "交易份额");
@@ -196,7 +217,23 @@ export function buildTradeInput(fundId: number, body: any, forcedType: "buy" | "
       throw toHttpError("扣除税费后的成交金额必须大于 0", 400);
     }
   } else {
-    amount = assertPositiveNumber(body.amount, tradeType === "buy" ? "买入金额" : "卖出金额");
+    fee = Number(body.fee || 0);
+    if (!Number.isFinite(fee) || fee < 0) {
+      throw toHttpError("手续费不能小于 0", 400);
+    }
+    if (tradeType === "sell" && shares) {
+      if (nav) {
+        amount = calculateFundTradeAmount("sell", shares, fee, nav);
+        if (amount == null) {
+          throw toHttpError("扣除手续费后的卖出金额必须大于 0", 400);
+        }
+      }
+    } else {
+      amount = assertPositiveNumber(body.amount, tradeType === "buy" ? "买入金额" : "卖出金额");
+      if (tradeType === "buy" && amount <= fee) {
+        throw toHttpError("买入金额必须大于手续费", 400);
+      }
+    }
   }
 
   if (!isStock && !nav) {
@@ -211,13 +248,44 @@ export function buildTradeInput(fundId: number, body: any, forcedType: "buy" | "
     }
   }
 
+  if (!isStock && tradeType === "sell" && shares && nav) {
+    amount = calculateFundTradeAmount("sell", shares, fee, nav);
+    if (amount == null) {
+      throw toHttpError("扣除手续费后的卖出金额必须大于 0", 400);
+    }
+  }
+
+  if (!isStock && tradeType === "sell" && !shares) {
+    if (amount == null) {
+      throw toHttpError("卖出金额或卖出份额至少填写一个", 400);
+    }
+    if (nav) {
+      shares = calculateFundTradeShares("sell", amount, fee, nav);
+      if (shares == null) {
+        throw toHttpError("无法根据卖出金额和手续费计算卖出份额", 400);
+      }
+    }
+  }
+
+  if (!isStock && tradeType === "buy" && amount == null) {
+    throw toHttpError("买入金额不能为空", 400);
+  }
+
+  if (!isStock && tradeType === "sell" && amount == null && !shares) {
+    throw toHttpError("卖出份额不能为空", 400);
+  }
+
   return {
     type: tradeType as "buy" | "sell",
     date: tradeDate,
     nav,
     amount,
     fee,
-    shares: isStock ? shares : nav ? amount / nav : null,
+    shares: isStock
+      ? shares
+      : tradeType === "buy"
+        ? (nav && amount != null ? calculateFundTradeShares("buy", amount, fee, nav) : null)
+        : (shares || null),
     status,
     note: cleanText(body.note),
   };

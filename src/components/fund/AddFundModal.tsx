@@ -35,7 +35,7 @@ export function AddFundModal({
 
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="addFundModalTitle" onMouseDown={(event) => event.target === event.currentTarget && !busy && onClose()}>
-      <form className="modal-panel add-fund-modal" onSubmit={onSubmit}>
+      <form className="modal-panel add-fund-modal" noValidate onSubmit={onSubmit}>
         <div className="modal-header">
           <div>
             <p className="eyebrow">添加资产</p>

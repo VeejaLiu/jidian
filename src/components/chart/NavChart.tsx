@@ -372,7 +372,7 @@ function renderTradeTooltipSection(param: any) {
         <strong>${label}记录</strong>
       </div>
       ${renderMetricRow("净值", formatNav(param.value?.[1]), tone)}
-      ${renderMetricRow("金额", formatMoney(point.amount), "muted")}
+      ${renderMetricRow("金额", Number.isFinite(Number(point.amount)) ? formatMoney(point.amount) : "待确认", "muted")}
       ${renderMetricRow(unitLabel, formatUnits(point.shares, point.assetType), "muted")}
       ${note}
     </div>

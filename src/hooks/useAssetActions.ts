@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../api/client";
+import { notifyError } from "../lib/notifications";
 import type { Fund } from "../types/fund";
 import { todayISO } from "../utils/date";
 
@@ -85,7 +86,7 @@ export function useAssetActions({
     const value = Number(dropRateDraft);
     const currentValue = (Number(selectedFund.dropRate) || 0.04) * 100;
     if (!Number.isFinite(value) || value <= 0 || value >= 100) {
-      window.alert("跌幅幅度必须大于 0 且小于 100%");
+      notifyError("跌幅幅度必须大于 0 且小于 100%");
       setDropRateDraft(currentValue.toFixed(1));
       return false;
     }
@@ -109,7 +110,7 @@ export function useAssetActions({
     const price = Number(manualPriceDraft.price);
     const accumulatedNav = Number(manualPriceDraft.accumulatedNav);
     if (!manualPriceDraft.date || !Number.isFinite(price) || price <= 0) {
-      window.alert(selectedFund.assetType === "stock" ? "价格必须大于 0" : "单位净值必须大于 0");
+      notifyError(selectedFund.assetType === "stock" ? "价格必须大于 0" : "单位净值必须大于 0");
       return false;
     }
 

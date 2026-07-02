@@ -29,7 +29,7 @@ export function ImportTradesModal({
 
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="importTradesModalTitle" onMouseDown={(event) => event.target === event.currentTarget && !busy && onClose()}>
-      <form className="modal-panel import-trades-modal" onSubmit={onSubmit}>
+      <form className="modal-panel import-trades-modal" noValidate onSubmit={onSubmit}>
         <div className="modal-header">
           <div>
             <p className="eyebrow">批量导入</p>

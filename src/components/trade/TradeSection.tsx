@@ -1,11 +1,12 @@
 import type { FormEvent } from "react";
-import type { DividendType, Fund, TradeRecord, TradeType } from "../../types/fund";
+import type { ChartData, DividendType, Fund, TradeRecord, TradeType } from "../../types/fund";
 import { DividendForm } from "./DividendForm";
 import { TradeForm } from "./TradeForm";
 import { TradeHistory } from "./TradeHistory";
 
 interface TradeSectionProps {
   fund: Fund;
+  chartData: ChartData;
   busy: boolean;
   tradeType: TradeType;
   tradeDate: string;
@@ -41,6 +42,7 @@ interface TradeSectionProps {
 
 export function TradeSection({
   fund,
+  chartData,
   busy,
   tradeType,
   tradeDate,
@@ -79,6 +81,8 @@ export function TradeSection({
         <TradeForm
           busy={busy}
           isStock={fund.assetType === "stock"}
+          availableShares={fund.position?.totalShares}
+          navPoints={chartData.nav}
           tradeType={tradeType}
           tradeDate={tradeDate}
           tradeAmount={tradeAmount}

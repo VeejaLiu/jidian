@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
+import { notifyError } from "../lib/notifications";
 import type { ChartData } from "../types/fund";
 
 const emptyChartData: ChartData = { nav: [], trades: [], position: null };
@@ -31,7 +32,7 @@ export function useChartData(fundId: number | null | undefined, accountQuery: ()
       } catch (error) {
         if (!cancelled) {
           setChartData(emptyChartData);
-          window.alert(error instanceof Error ? error.message : "操作失败");
+          notifyError(error instanceof Error ? error.message : "操作失败");
         }
       } finally {
         if (!cancelled) setChartLoading(false);

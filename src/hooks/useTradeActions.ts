@@ -52,6 +52,7 @@ export function useTradeActions({
     event.preventDefault();
     if (!selectedFund) return;
     const isStock = selectedFund.assetType === "stock";
+    const isFundSell = !isStock && tradeForm.tradeType === "sell";
 
     runWithBusy("保存中...", async () => {
       await api(`/api/funds/${selectedFund.id}/trades`, {
@@ -60,10 +61,10 @@ export function useTradeActions({
           accountId: selectedAccountId,
           type: tradeForm.tradeType,
           date: tradeForm.tradeDate,
-          amount: tradeForm.tradeAmount,
+          amount: isFundSell ? (tradeForm.tradeAmount || undefined) : tradeForm.tradeAmount,
           nav: isStock ? tradeForm.tradePrice : undefined,
-          shares: isStock ? tradeForm.tradeShares : undefined,
-          fee: isStock ? tradeForm.tradeFee : undefined,
+          shares: isStock || isFundSell ? tradeForm.tradeShares : undefined,
+          fee: tradeForm.tradeFee,
           note: tradeForm.tradeNote.trim(),
         }),
       });
@@ -106,6 +107,8 @@ export function useTradeActions({
   const handleSubmitEditTrade = useCallback((event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!selectedFund || !tradeForm.editingTrade) return;
+    const isStock = selectedFund.assetType === "stock";
+    const isFundSell = !isStock && tradeForm.editTradeDraft.type === "sell";
 
     runWithBusy("保存中...", async () => {
       await api(`/api/trades/${tradeForm.editingTrade.id}`, {
@@ -113,10 +116,10 @@ export function useTradeActions({
         body: JSON.stringify({
           type: tradeForm.editTradeDraft.type,
           date: tradeForm.editTradeDraft.date,
-          amount: tradeForm.editTradeDraft.amount,
-          nav: selectedFund.assetType === "stock" ? tradeForm.editTradeDraft.price : undefined,
-          shares: selectedFund.assetType === "stock" ? tradeForm.editTradeDraft.shares : undefined,
-          fee: selectedFund.assetType === "stock" ? tradeForm.editTradeDraft.fee : undefined,
+          amount: isFundSell ? (tradeForm.editTradeDraft.amount || undefined) : tradeForm.editTradeDraft.amount,
+          nav: isStock ? tradeForm.editTradeDraft.price : undefined,
+          shares: isStock || isFundSell ? tradeForm.editTradeDraft.shares : undefined,
+          fee: tradeForm.editTradeDraft.fee,
           note: tradeForm.editTradeDraft.note.trim(),
         }),
       });

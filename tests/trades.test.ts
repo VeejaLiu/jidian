@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { calculatePositionFromTrades } from "../server/services/trades";
+import { calculateFundTradeAmount, calculateFundTradeShares, calculatePositionFromTrades } from "../server/services/trades";
 
 test("calculatePositionFromTrades tracks open position and realized profit", () => {
   const position = calculatePositionFromTrades([
@@ -43,4 +43,28 @@ test("calculatePositionFromTrades includes cash and reinvested dividends", () =>
   assert.equal(position.totalShares, 1050);
   assert.equal(position.dividendIncome, 90);
   assert.equal(position.realizedProfit, 90);
+});
+
+test("calculateFundTradeShares applies fees for fund buys and sells", () => {
+  assert.equal(calculateFundTradeShares("buy", 1000, 15, 1.23), (1000 - 15) / 1.23);
+  assert.equal(calculateFundTradeShares("sell", 1000, 15, 1.23), (1000 + 15) / 1.23);
+  assert.equal(calculateFundTradeShares("buy", 10, 10, 1.23), null);
+});
+
+test("calculateFundTradeAmount applies fees for fund sells", () => {
+  assert.equal(calculateFundTradeAmount("sell", 800, 12, 1.5), 1188);
+  assert.equal(calculateFundTradeAmount("sell", 10, 20, 1), null);
+});
+
+test("calculatePositionFromTrades uses net sell proceeds after fees for realized profit", () => {
+  const position = calculatePositionFromTrades([
+    { id: 1, type: "buy", date: "2026-01-01", nav: 1, amount: 1000, fee: 10, shares: 990, status: "confirmed" },
+    { id: 2, type: "sell", date: "2026-01-02", nav: 1.1, amount: 1080, fee: 10, shares: 1000, status: "confirmed" },
+  ]);
+
+  assert.equal(position.totalAmount, 0);
+  assert.equal(position.totalShares, 0);
+  assert.equal(position.realizedAmount, 1080);
+  assert.equal(position.realizedCost, 1000);
+  assert.equal(position.realizedProfit, 80);
 });

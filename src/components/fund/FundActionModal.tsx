@@ -62,7 +62,7 @@ export function FundActionModal({
       aria-labelledby="fundActionModalTitle"
       onMouseDown={(event) => event.target === event.currentTarget && !busy && onClose()}
     >
-      <form className="modal-panel fund-action-modal" onSubmit={submit}>
+      <form className="modal-panel fund-action-modal" noValidate onSubmit={submit}>
         <div className="modal-header">
           <div>
             <p className="eyebrow">{meta.eyebrow}</p>

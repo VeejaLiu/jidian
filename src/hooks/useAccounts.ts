@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../api/client";
+import { notifyError } from "../lib/notifications";
 import type { AccountSummary, UserAccount } from "../types/fund";
 
 type RunWithBusy = <T>(label: string, action: () => Promise<T>) => Promise<T | null>;
@@ -48,7 +49,7 @@ export function useAccounts({ runWithBusy, onAccountCreated, onAccountDeleted }:
       setAccountSummary(payload);
       return payload;
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : "操作失败");
+      notifyError(error instanceof Error ? error.message : "操作失败");
       return null;
     } finally {
       setAccountSummaryLoading(false);

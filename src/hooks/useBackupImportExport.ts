@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { api } from "../api/client";
 import type { BackupImportPreview } from "../components/account/BackupImportPreviewModal";
+import { notifySuccess } from "../lib/notifications";
 import type { BackupPayload } from "../types/fund";
 
 type RunWithBusy = <T>(label: string, action: () => Promise<T>) => Promise<T | null>;
@@ -52,7 +53,7 @@ export function useBackupImportExport({ runWithBusy, reloadAfterImport }: UseBac
       });
       setBackupImportDraft(null);
       await reloadAfterImport();
-      window.alert("导入完成");
+      notifySuccess("导入完成");
       return true;
     });
   }, [backupImportDraft, reloadAfterImport, runWithBusy]);

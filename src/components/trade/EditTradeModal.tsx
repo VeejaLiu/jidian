@@ -1,9 +1,10 @@
-import { useEffect, type FormEvent } from "react";
+import { useEffect, useRef, type FormEvent } from "react";
 import { DatePicker } from "../DatePicker";
-import type { Fund, TradeDraft, TradeRecord } from "../../types/fund";
+import type { Fund, NavPoint, TradeDraft, TradeRecord } from "../../types/fund";
 
 interface EditTradeModalProps {
   fund: Fund | null;
+  navPoints?: NavPoint[];
   record: TradeRecord | null;
   draft: TradeDraft;
   busy: boolean;
@@ -14,6 +15,7 @@ interface EditTradeModalProps {
 
 export function EditTradeModal({
   fund,
+  navPoints = [],
   record,
   draft,
   busy,
@@ -21,6 +23,7 @@ export function EditTradeModal({
   onClose,
   onSubmit,
 }: EditTradeModalProps) {
+  const lastEditedFieldRef = useRef<"amount" | "shares">("shares");
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape" && record && !busy) onClose();
@@ -31,14 +34,82 @@ export function EditTradeModal({
 
   if (!record) return null;
   const isStock = fund?.assetType === "stock";
+  const isFundSell = !isStock && draft.type === "sell";
 
   const setDraftField = (field: keyof TradeDraft, value: string) => {
     onDraftChange({ ...draft, [field]: value });
   };
 
+  function formatShareInput(value: number) {
+    return value.toFixed(2).replace(/\.?0+$/, "");
+  }
+
+  function formatAmountInput(value: number) {
+    return value.toFixed(2);
+  }
+
+  function getNavForDate(date: string) {
+    const value = Number(navPoints.find((point) => point.date === date)?.nav);
+    return Number.isFinite(value) && value > 0 ? value : null;
+  }
+
+  function calculateAmountFromShares(sharesValue: string, feeValue: string, navValue: number | null) {
+    const sharesNumber = Number(sharesValue);
+    const feeNumber = Number(feeValue || 0);
+    if (!Number.isFinite(sharesNumber) || sharesNumber <= 0 || !Number.isFinite(feeNumber) || feeNumber < 0 || !navValue) return "";
+    const amount = (sharesNumber * navValue) - feeNumber;
+    return amount > 0 ? formatAmountInput(amount) : "";
+  }
+
+  function calculateSharesFromAmount(amountValue: string, feeValue: string, navValue: number | null) {
+    const amountNumber = Number(amountValue);
+    const feeNumber = Number(feeValue || 0);
+    if (!Number.isFinite(amountNumber) || amountNumber <= 0 || !Number.isFinite(feeNumber) || feeNumber < 0 || !navValue) return "";
+    const sharesNumber = (amountNumber + feeNumber) / navValue;
+    return sharesNumber > 0 ? formatShareInput(sharesNumber) : "";
+  }
+
+  function handleFundSellAmountChange(nextAmount: string) {
+    lastEditedFieldRef.current = "amount";
+    onDraftChange({
+      ...draft,
+      amount: nextAmount,
+      shares: calculateSharesFromAmount(nextAmount, draft.fee, getNavForDate(draft.date)),
+    });
+  }
+
+  function handleFundSellSharesChange(nextShares: string) {
+    lastEditedFieldRef.current = "shares";
+    onDraftChange({
+      ...draft,
+      shares: nextShares,
+      amount: calculateAmountFromShares(nextShares, draft.fee, getNavForDate(draft.date)),
+    });
+  }
+
+  function handleFundSellDateChange(nextDate: string) {
+    const nextNav = getNavForDate(nextDate);
+    onDraftChange({
+      ...draft,
+      date: nextDate,
+      amount: lastEditedFieldRef.current === "shares" ? calculateAmountFromShares(draft.shares, draft.fee, nextNav) : draft.amount,
+      shares: lastEditedFieldRef.current === "amount" ? calculateSharesFromAmount(draft.amount, draft.fee, nextNav) : draft.shares,
+    });
+  }
+
+  function handleFundSellFeeChange(nextFee: string) {
+    const nextNav = getNavForDate(draft.date);
+    onDraftChange({
+      ...draft,
+      fee: nextFee,
+      amount: lastEditedFieldRef.current === "shares" ? calculateAmountFromShares(draft.shares, nextFee, nextNav) : draft.amount,
+      shares: lastEditedFieldRef.current === "amount" ? calculateSharesFromAmount(draft.amount, nextFee, nextNav) : draft.shares,
+    });
+  }
+
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="editTradeModalTitle" onMouseDown={(event) => event.target === event.currentTarget && !busy && onClose()}>
-      <form className="modal-panel trade-edit-modal" onSubmit={onSubmit}>
+      <form className="modal-panel trade-edit-modal" noValidate onSubmit={onSubmit}>
         <div className="modal-header">
           <div>
             <p className="eyebrow">交易记录</p>
@@ -73,7 +144,7 @@ export function EditTradeModal({
         <div className="form-row compact">
           <label>
             <span>日期</span>
-            <DatePicker value={draft.date} disabled={busy} onChange={(value) => setDraftField("date", value)} />
+            <DatePicker value={draft.date} disabled={busy} onChange={(value) => (isFundSell ? handleFundSellDateChange(value) : setDraftField("date", value))} />
           </label>
           {isStock ? (
             <label>
@@ -88,9 +159,34 @@ export function EditTradeModal({
                 required
               />
             </label>
+          ) : isFundSell ? (
+            <>
+              <label>
+                <span>卖出金额</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={draft.amount}
+                  onChange={(event) => handleFundSellAmountChange(event.target.value)}
+                  disabled={busy}
+                />
+              </label>
+              <label>
+                <span>卖出份额</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={draft.shares}
+                  onChange={(event) => handleFundSellSharesChange(event.target.value)}
+                  disabled={busy}
+                />
+              </label>
+            </>
           ) : (
           <label>
-            <span>{draft.type === "sell" ? "卖出金额" : "买入金额"}</span>
+            <span>买入金额</span>
             <input
               type="number"
               min="0"
@@ -102,6 +198,17 @@ export function EditTradeModal({
             />
           </label>
           )}
+          <label>
+            <span>{isStock ? "税费" : "手续费"}</span>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={draft.fee}
+              onChange={(event) => (isFundSell ? handleFundSellFeeChange(event.target.value) : setDraftField("fee", event.target.value))}
+              disabled={busy}
+            />
+          </label>
         </div>
 
         {isStock && (
@@ -119,23 +226,11 @@ export function EditTradeModal({
               />
             </label>
             <label>
-              <span>税费</span>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={draft.fee}
-                onChange={(event) => setDraftField("fee", event.target.value)}
-                disabled={busy}
-              />
-            </label>
-            <label>
               <span>成交金额</span>
               <input type="number" value={draft.amount} disabled readOnly />
             </label>
           </div>
         )}
-
         <label>
           <span>备注</span>
           <input
@@ -145,7 +240,11 @@ export function EditTradeModal({
           />
         </label>
         <p className="form-help">
-          {isStock ? "股票交易按成交价、股数和税费保存，金额会自动计算并计入成本。" : "若所选日期的净值尚未公布，保存后会先显示为待确认。"}
+          {isStock
+            ? "股票交易按成交价、股数和税费保存，金额会自动计算并计入成本。"
+            : isFundSell
+              ? "基金卖出按份额保存；如果所选日期的净值还没公布，会先保存为待确认，后续自动补齐卖出金额。"
+              : "基金买入按实际支付金额保存；手续费会自动计入份额、成本和收益。"}
         </p>
 
         <div className="modal-actions">

@@ -46,15 +46,16 @@ export function TradeHistory({ fund, onEditTrade, onDeleteTrade }: TradeHistoryP
         key: "sellReturnRate",
         render: (record: TradeRecord) => <SellReturnRateCell record={record} rate={sellReturnRateMap.get(record.id)} />,
       },
-      { key: "amount", render: (record: TradeRecord) => formatMoney(record.amount) },
+      {
+        key: "amount",
+        render: (record: TradeRecord) => (record.status === "pending" && !Number.isFinite(Number(record.amount)) ? "待确认" : formatMoney(record.amount)),
+      },
     ];
 
-    if (isStock) {
-      baseColumns.push({
-        key: "fee",
-        render: (record: TradeRecord) => formatMoney(record.fee ?? 0),
-      });
-    }
+    baseColumns.push({
+      key: "fee",
+      render: (record: TradeRecord) => formatMoney(record.fee ?? 0),
+    });
 
     baseColumns.push(
       { key: "shares", render: (record: TradeRecord) => (record.status === "pending" ? "待确认" : formatUnits(record.shares, fund.assetType)) },
@@ -104,7 +105,7 @@ export function TradeHistory({ fund, onEditTrade, onDeleteTrade }: TradeHistoryP
               <th>{isStock ? "较上次买入价" : "较上次买入"}</th>
               <th>{isStock ? "卖出回报率" : "卖出收益率"}</th>
               <th>{isStock ? "成交金额" : "金额"}</th>
-              {isStock && <th>税费</th>}
+              <th>{isStock ? "税费" : "手续费"}</th>
               <th>{isStock ? "股数" : "份额"}</th>
               <th>备注</th>
               <th></th>

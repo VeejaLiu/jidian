@@ -144,7 +144,7 @@ CREATE TABLE IF NOT EXISTS trade_records (
   trade_type TEXT NOT NULL CHECK (trade_type IN ('buy', 'sell')),
   trade_date TEXT NOT NULL CHECK (date(trade_date) = trade_date),
   trade_nav REAL CHECK (trade_nav IS NULL OR trade_nav > 0),
-  amount REAL NOT NULL CHECK (amount > 0),
+  amount REAL CHECK (amount IS NULL OR amount > 0),
   fee REAL NOT NULL DEFAULT 0 CHECK (fee >= 0),
   shares REAL CHECK (shares IS NULL OR shares > 0),
   status TEXT NOT NULL DEFAULT 'confirmed' CHECK (status IN ('pending', 'confirmed')),

@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import Database from "better-sqlite3";
 import { db } from "../db/database";
-import { migrateAccounts, migrateAssetTypes, migrateDividendRecords, migrateStockPriceFields, migrateTradeFees, migrateTradeRecordsForPendingStatus } from "../db/migrations";
+import { migrateAccounts, migrateAssetTypes, migrateDividendRecords, migrateStockPriceFields, migrateTradeAmountNullable, migrateTradeFees, migrateTradeRecordsForPendingStatus } from "../db/migrations";
 import { BACKUP_DIR, SCHEMA_PATH } from "../config/paths";
 import { toHttpError } from "../utils/httpError";
 
@@ -262,6 +262,7 @@ export function importBackup(payload: unknown) {
   migrateAssetTypes();
   migrateTradeRecordsForPendingStatus();
   migrateTradeFees();
+  migrateTradeAmountNullable();
   migrateStockPriceFields();
   migrateDividendRecords();
 

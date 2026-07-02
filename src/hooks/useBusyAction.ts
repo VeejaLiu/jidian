@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import { DEFAULT_BUSY_LABEL } from "../constants/app";
+import { notifyError } from "../lib/notifications";
 
 interface BusyState {
   active: boolean;
@@ -14,7 +15,7 @@ export function useBusyAction() {
     try {
       return await action();
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : "操作失败");
+      notifyError(error instanceof Error ? error.message : "操作失败");
       return null;
     } finally {
       setBusy({ active: false, label: DEFAULT_BUSY_LABEL });

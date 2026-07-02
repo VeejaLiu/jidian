@@ -37,6 +37,26 @@
   align-content: start;
 }
 
+.trade-quick-sell {
+  display: grid;
+  gap: 8px;
+  margin-top: -4px;
+}
+
+.trade-quick-sell-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.trade-quick-sell-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .table-wrap {
   overflow: auto;
   border: 1px solid var(--line);

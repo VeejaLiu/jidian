@@ -180,6 +180,7 @@ export function Workspace({
           />
           <TradeSection
             fund={fund}
+            chartData={chartData}
             busy={busy}
             tradeType={tradeType}
             tradeDate={tradeDate}

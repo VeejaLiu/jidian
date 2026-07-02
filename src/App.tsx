@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppDialogs } from "./components/AppDialogs";
 import { AppMain } from "./components/AppMain";
+import { AppNoticeRegion } from "./components/AppNoticeRegion";
 import { useAccounts } from "./hooks/useAccounts";
 import { useAppShortcuts } from "./hooks/useAppShortcuts";
 import { useAssetActions } from "./hooks/useAssetActions";
@@ -186,6 +187,7 @@ export function App() {
         accounts={accounts}
         assets={assets}
         backup={backup}
+        chart={chart}
         navHistory={navHistory}
         tradeActions={tradeActions}
         tradeForm={tradeForm}
@@ -200,6 +202,7 @@ export function App() {
         onPreviewHiddenFund={handlePreviewHiddenFund}
         onRestoreFund={handleRestoreFund}
       />
+      <AppNoticeRegion />
     </>
   );
 }

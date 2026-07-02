@@ -7,6 +7,7 @@ import { EditTradeModal } from "./trade/EditTradeModal";
 import type { useAccounts } from "../hooks/useAccounts";
 import type { useAssets } from "../hooks/useAssets";
 import type { useBackupImportExport } from "../hooks/useBackupImportExport";
+import type { useChartData } from "../hooks/useChartData";
 import type { useNavHistoryModal } from "../hooks/useNavHistoryModal";
 import type { useTradeActions } from "../hooks/useTradeActions";
 import type { useTradeForm } from "../hooks/useTradeForm";
@@ -16,6 +17,7 @@ interface AppDialogsProps {
   accounts: ReturnType<typeof useAccounts>;
   assets: ReturnType<typeof useAssets>;
   backup: ReturnType<typeof useBackupImportExport>;
+  chart: ReturnType<typeof useChartData>;
   navHistory: ReturnType<typeof useNavHistoryModal>;
   tradeActions: ReturnType<typeof useTradeActions>;
   tradeForm: ReturnType<typeof useTradeForm>;
@@ -35,6 +37,7 @@ export function AppDialogs({
   accounts,
   assets,
   backup,
+  chart,
   navHistory,
   tradeActions,
   tradeForm,
@@ -100,6 +103,7 @@ export function AppDialogs({
       />
       <EditTradeModal
         fund={assets.selectedFund}
+        navPoints={chart.chartData.nav}
         record={tradeForm.editingTrade}
         draft={tradeForm.editTradeDraft}
         busy={busy.active}
