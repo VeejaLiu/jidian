@@ -69,7 +69,7 @@ h3 {
   place-items: center;
   width: 42px;
   height: 42px;
-  border-radius: 8px;
+  border-radius: var(--button-radius);
   background: rgba(255, 255, 255, 0.11);
   color: #ffffff;
   font-size: 1.35rem;
@@ -192,7 +192,7 @@ select:focus {
 .data-form button,
 .secondary-button {
   min-height: 42px;
-  border-radius: 8px;
+  border-radius: var(--button-radius);
   background: var(--primary);
   color: #ffffff;
   font-weight: 800;
@@ -231,7 +231,7 @@ button:disabled {
 .range-switcher button {
   min-height: 32px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--button-radius);
   padding: 0 10px;
   background: #ffffff;
   color: var(--muted);
@@ -358,7 +358,7 @@ button:disabled {
 .sidebar-text-button {
   flex: 0 0 auto;
   min-height: 30px;
-  border-radius: 8px;
+  border-radius: var(--button-radius);
   padding: 0 8px;
   background: transparent;
   color: #bdd0d6;

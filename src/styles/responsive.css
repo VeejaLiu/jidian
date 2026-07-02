@@ -34,7 +34,9 @@
   .input-grid,
   .tables-grid,
   .buy-grid,
-  .form-row {
+  .form-row,
+  .trade-sell-core-row,
+  .trade-sell-support-row {
     grid-template-columns: 1fr;
   }
 

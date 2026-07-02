@@ -135,7 +135,7 @@
   width: 42px;
   height: 42px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--button-radius);
   background: #ffffff;
   color: var(--muted);
   font-size: 1.45rem;
@@ -169,7 +169,7 @@
   display: grid;
   gap: 4px;
   min-height: 58px;
-  border-radius: 7px;
+  border-radius: 20px;
   padding: 10px;
   background: transparent;
   color: var(--ink);

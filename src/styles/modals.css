@@ -326,7 +326,7 @@
 
 .account-card-actions button {
   min-height: 32px;
-  border-radius: 8px;
+  border-radius: var(--button-radius);
   padding: 0 10px;
   background: var(--surface-strong);
   color: var(--ink);
@@ -389,7 +389,7 @@
   align-items: center;
   gap: 14px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 20px;
   padding: 12px;
   background: #ffffff;
   width: 100%;

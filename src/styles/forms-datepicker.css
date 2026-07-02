@@ -18,7 +18,7 @@
 .trade-type-switch button {
   min-height: 38px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--button-radius);
   background: #ffffff;
   color: var(--muted);
   font-weight: 800;
@@ -39,7 +39,7 @@
 
 .text-action {
   min-height: 30px;
-  border-radius: 8px;
+  border-radius: var(--button-radius);
   padding: 0 9px;
   background: rgba(25, 123, 117, 0.08);
   color: var(--primary-dark);

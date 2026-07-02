@@ -21,6 +21,7 @@
   --neutral-soft: #f5f7f8;
   --danger: #b42318;
   --shadow: 0 14px 38px rgba(29, 45, 53, 0.09);
+  --button-radius: 999px;
   --buy-panel-height: 390px;
   --table-row-height: 53px;
   --table-head-height: 39px;

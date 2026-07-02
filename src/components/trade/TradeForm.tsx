@@ -53,15 +53,17 @@ export function TradeForm({
   const hasAvailableShares = Number.isFinite(currentShares) && currentShares > 0;
   const selectedNav = navPoints.find((point) => point.date === tradeDate)?.nav;
   const selectedNavNumber = Number(selectedNav);
+  const hasSelectedNav = Number.isFinite(selectedNavNumber) && selectedNavNumber > 0;
   const estimatedSellAmount = isFundSell
     && Number.isFinite(currentSellShares)
     && currentSellShares > 0
-    && Number.isFinite(selectedNavNumber)
-    && selectedNavNumber > 0
+    && hasSelectedNav
     && Number.isFinite(currentFee)
     && currentFee >= 0
       ? (currentSellShares * selectedNavNumber) - currentFee
       : null;
+  const hasSellAmountInput = Number.isFinite(Number(tradeAmount)) && Number(tradeAmount) > 0;
+  const hasSellSharesInput = Number.isFinite(currentSellShares) && currentSellShares > 0;
   const quickShareOptions = [
     { label: "全部", ratio: 1 },
     { label: "1/2", ratio: 0.5 },
@@ -131,10 +133,50 @@ export function TradeForm({
     onAmountChange(calculateAmountFromShares(tradeShares, nextFee, nextNav));
   }
 
+  function renderFundSellFeedback() {
+    if (!hasSellAmountInput && !hasSellSharesInput) {
+      return (
+        <div className="trade-sell-feedback">
+          <strong>输入卖出金额或卖出份额后会自动换算</strong>
+          <span>手续费会计入实际到账金额。</span>
+        </div>
+      );
+    }
+
+    if (!hasSelectedNav) {
+      return (
+        <div className="trade-sell-feedback pending">
+          <strong>当天净值未找到</strong>
+          <span>本次会先保存为待确认，后续自动补齐卖出净值和到账金额。</span>
+        </div>
+      );
+    }
+
+    if (estimatedSellAmount != null && estimatedSellAmount <= 0) {
+      return (
+        <div className="trade-sell-feedback danger">
+          <strong>当前手续费已经覆盖本次卖出金额</strong>
+          <span>请调低手续费，或提高卖出金额/卖出份额。</span>
+        </div>
+      );
+    }
+
+    return (
+      <div className="trade-sell-feedback">
+        <strong>按当日净值 {selectedNavNumber.toFixed(4)} 自动换算</strong>
+        <span>
+          卖出份额 {hasSellSharesInput ? formatShareInput(currentSellShares) : "--"} 份
+          {" · "}
+          预计到账 {estimatedSellAmount != null ? estimatedSellAmount.toFixed(2) : tradeAmount || "--"}
+        </span>
+      </div>
+    );
+  }
+
   return (
-    <form className="data-form" noValidate onSubmit={onSubmit}>
+    <form className="data-form trade-entry-form" noValidate onSubmit={onSubmit}>
       <h3>添加交易</h3>
-      <div className="trade-type-switch" aria-label="交易类型">
+      <div className={`trade-type-switch trade-type-switch-animated ${tradeType === "buy" ? "is-buy" : "is-sell"}`} aria-label="交易类型">
         <button
           className={tradeType === "buy" ? "active" : ""}
           type="button"
@@ -159,22 +201,10 @@ export function TradeForm({
           <span>日期</span>
           <DatePicker value={tradeDate} disabled={busy} onChange={isFundSell ? handleFundSellDateChange : onDateChange} />
         </label>
-        {isStock ? (
-          <label>
-            <span>{tradeType === "sell" ? "卖出价格" : "买入价格"}</span>
-            <input
-              type="number"
-              min="0"
-              step="0.0001"
-              placeholder="例如：12.3400"
-              value={tradePrice}
-              onChange={(event) => onPriceChange(event.target.value)}
-              disabled={busy}
-              required
-            />
-          </label>
-        ) : isFundSell ? (
-          <>
+      </div>
+      {isFundSell ? (
+        <div className="trade-sell-layout">
+          <div className="form-row trade-sell-core-row">
             <label>
               <span>卖出金额</span>
               <input
@@ -199,58 +229,85 @@ export function TradeForm({
                 disabled={busy}
               />
             </label>
-          </>
-        ) : (
-        <label>
-          <span>买入金额</span>
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            placeholder="例如：1000.00"
-            value={tradeAmount}
-            onChange={(event) => onAmountChange(event.target.value)}
-            disabled={busy}
-            required
-          />
-        </label>
-        )}
-        <label>
-          <span>{isStock ? "税费" : "手续费"}</span>
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            placeholder="例如：5.00"
-            value={tradeFee}
-            onChange={(event) => (isFundSell ? handleFundSellFeeChange(event.target.value) : onFeeChange(event.target.value))}
-            disabled={busy}
-          />
-        </label>
-      </div>
-      {isFundSell && (
-        <div className="trade-quick-sell">
-          <div className="trade-quick-sell-meta">
-            <span>当前持有 {hasAvailableShares ? formatShareInput(currentShares) : "--"} 份</span>
-            <span>
-              {estimatedSellAmount != null
-                ? `按 ${selectedNavNumber.toFixed(4)} 净值预估到账 ${estimatedSellAmount.toFixed(2)}`
-                : "当天净值未找到时会先显示待确认，后续自动补齐到账金额"}
-            </span>
           </div>
-          <div className="trade-quick-sell-actions">
-            {quickShareOptions.map((option) => (
-              <button
-                key={option.label}
-                className="secondary-button"
-                type="button"
-                disabled={busy || !hasAvailableShares}
-                onClick={() => hasAvailableShares && handleFundSellSharesChange(formatShareInput(currentShares * option.ratio))}
-              >
-                {option.label}
-              </button>
-            ))}
+          <div className="form-row trade-sell-support-row">
+            <label>
+              <span>手续费</span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="例如：5.00"
+                value={tradeFee}
+                onChange={(event) => handleFundSellFeeChange(event.target.value)}
+                disabled={busy}
+              />
+            </label>
+            <div className="trade-sell-assist">
+              <div className="trade-sell-assist-meta">
+                <span>当前持有</span>
+                <strong>{hasAvailableShares ? `${formatShareInput(currentShares)} 份` : "--"}</strong>
+              </div>
+              <div className="trade-quick-sell-actions">
+                {quickShareOptions.map((option) => (
+                  <button
+                    key={option.label}
+                    className="secondary-button"
+                    type="button"
+                    disabled={busy || !hasAvailableShares}
+                    onClick={() => hasAvailableShares && handleFundSellSharesChange(formatShareInput(currentShares * option.ratio))}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
+          {renderFundSellFeedback()}
+        </div>
+      ) : (
+        <div className="form-row compact">
+          {isStock ? (
+            <label>
+              <span>{tradeType === "sell" ? "卖出价格" : "买入价格"}</span>
+              <input
+                type="number"
+                min="0"
+                step="0.0001"
+                placeholder="例如：12.3400"
+                value={tradePrice}
+                onChange={(event) => onPriceChange(event.target.value)}
+                disabled={busy}
+                required
+              />
+            </label>
+          ) : (
+            <label>
+              <span>买入金额</span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="例如：1000.00"
+                value={tradeAmount}
+                onChange={(event) => onAmountChange(event.target.value)}
+                disabled={busy}
+                required
+              />
+            </label>
+          )}
+          <label>
+            <span>{isStock ? "税费" : "手续费"}</span>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="例如：5.00"
+              value={tradeFee}
+              onChange={(event) => onFeeChange(event.target.value)}
+              disabled={busy}
+            />
+          </label>
         </div>
       )}
       {isStock && (
@@ -283,13 +340,11 @@ export function TradeForm({
           disabled={busy}
         />
       </label>
-      <p className="form-help">
-        {isStock
-          ? "股票手动交易按成交价、股数和税费记录，成交金额会自动计算并计入成本。"
-          : isFundSell
-            ? estimatedSellAmount != null && estimatedSellAmount <= 0
-              ? "当前手续费已经大于等于本次卖出总额，请调整手续费或卖出份额。"
-              : "基金卖出按份额记录；如果当天净值尚未公布，会先保存为待确认，后续自动补齐卖出净值和实际到账金额。"
+        <p className="form-help">
+          {isStock
+            ? "股票手动交易按成交价、股数和税费记录，成交金额会自动计算并计入成本。"
+            : isFundSell
+            ? "基金卖出支持输入金额或份额，系统会按当日净值和手续费自动换算。"
             : "基金金额按实际现金流记录：买入填总支付；手续费会自动计入份额、成本和收益。若当天净值尚未公布，系统后续会自动补齐净值和份额。"}
       </p>
       <button type="submit" disabled={busy}>
