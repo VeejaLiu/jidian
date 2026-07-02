@@ -124,7 +124,7 @@ export function calculatePositionFromTrades(trades: TradeRecord[], dividends: Di
   const displayAverageCost = hasOpenPosition
     ? (totalShares > 0 ? totalAmount / totalShares : null)
     : lastClosedAverageCost;
-  const displayAverageCostLabel = hasOpenPosition ? "当前成本价" : lastClosedAverageCost !== null ? "最近一轮成本价" : "成本价";
+  const displayAverageCostLabel = hasOpenPosition ? "持有成本价" : lastClosedAverageCost !== null ? "最近一轮成本均价" : "成本均价";
 
   return {
     totalAmount,
