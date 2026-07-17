@@ -84,6 +84,12 @@ npm run desktop:build
 
 这个命令默认生成 Apple Silicon `arm64` 安装包。
 
+如果当前机器是 Intel Mac，请改用 `x64`：
+
+```bash
+npm run desktop:build:x64
+```
+
 如果要额外生成通用包：
 
 ```bash
@@ -94,12 +100,82 @@ npm run desktop:build:universal
 
 - 前端静态资源 `dist/`
 - 桌面版内置服务端 JS 产物 `build/server/`
-- 打包结束后自动恢复当前开发环境使用的 `better-sqlite3` 原生模块，避免影响后续 `npm run dev`
+- 在独立临时目录中安装依赖并为 Electron 编译原生模块，成品输出到 `release/`
+
+桌面构建不会修改项目本地的 `node_modules`。因此，无论构建成功、失败或中途取消，`npm run dev` 都始终使用本地 Node 版本对应的 `better-sqlite3`，不会再被桌面打包覆盖。
 
 仅输出目录结构，便于检查打包内容：
 
 ```bash
 npm run desktop:build:dir
+```
+
+Intel Mac 对应的目录输出命令：
+
+```bash
+npm run desktop:build:dir:x64
+```
+
+### 桌面打包与 better-sqlite3 ABI
+
+`better-sqlite3` 是原生模块，桌面包最容易出问题的地方就是它的 ABI 和 Electron 运行时不匹配。
+
+桌面版和网页开发使用不同的 Node 运行时 ABI。构建脚本会自动将它们隔离，以下规则仍需遵守：
+
+- 打包 Electron 桌面版时，必须使用仓库要求的 Node 版本，当前以 `.nvmrc` 为准。
+- Intel Mac 不要使用默认的 `arm64` 打包命令，否则安装包内的原生模块架构会不对。
+- 不要直接在项目根目录运行 `electron-builder` 或 `electron-rebuild`；请使用 `npm run desktop:build*` 命令，以保持开发依赖不受影响。
+- 不能只检查 `app.asar.unpacked/node_modules/better-sqlite3/...`，还要确认 `app.asar` 内没有残留旧版本的 `better_sqlite3.node`。如果 `app.asar` 里还带着旧 ABI 的二进制，Electron 仍然可能把它解压到临时目录后加载，表现为：
+
+```text
+The module '/var/folders/.../.org.chromium.Chromium.*'
+was compiled against a different Node.js version using NODE_MODULE_VERSION ...
+```
+
+推荐的本机打包流程：
+
+```bash
+. "$HOME/.nvm/nvm.sh"
+nvm use
+npm run desktop:build:x64     # Intel Mac
+# 或
+npm run desktop:build         # Apple Silicon
+```
+
+如果桌面版安装后出现 `better-sqlite3` 的 `ERR_DLOPEN_FAILED`：
+
+1. 先确认 Electron 运行时 ABI：
+
+```bash
+ELECTRON_RUN_AS_NODE=1 ./node_modules/.bin/electron -p "process.versions.modules + ' ' + process.version"
+```
+
+2. 再确认本地 Node ABI：
+
+```bash
+node -p "process.versions.modules + ' ' + process.version"
+```
+
+3. 如果桌面应用已经安装到 `/Applications/基点.app`，检查它实际加载的是否还是旧 ABI：
+
+```bash
+ELECTRON_RUN_AS_NODE=1 /Applications/基点.app/Contents/MacOS/基点 \
+  -e "const Database=require('/Applications/基点.app/Contents/Resources/app.asar/node_modules/better-sqlite3'); const db=new Database(':memory:'); db.close(); console.log('OK')"
+```
+
+4. 如果这里仍然失败，不要只重编译 `app.asar.unpacked` 里的文件，还要确认 `app.asar` 内的 `node_modules/better-sqlite3/build/Release/better_sqlite3.node` 也已经被替换。
+
+这次我们实际踩到的坑就是：
+
+- `app.asar.unpacked` 里的 `better-sqlite3` 已经修好
+- 但 `app.asar` 里面还残留旧 ABI 的 `better_sqlite3.node`
+- Electron 最终从 `app.asar` 解压旧文件到 `/var/folders/.../.org.chromium.Chromium.*` 后加载，导致桌面版继续报错
+
+因此，桌面包验收时至少要做一次 Electron 运行时自检，而不是只看文件时间戳：
+
+```bash
+ELECTRON_RUN_AS_NODE=1 /Applications/基点.app/Contents/MacOS/基点 \
+  -e "const Database=require('/Applications/基点.app/Contents/Resources/app.asar/node_modules/better-sqlite3'); const db=new Database(':memory:'); db.prepare('select 1').get(); db.close(); console.log('OK')"
 ```
 
 ### macOS 签名与公证

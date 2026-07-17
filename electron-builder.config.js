@@ -4,7 +4,7 @@ module.exports = {
   appId: "com.veejaliu.jidian",
   productName: "基点",
   directories: {
-    output: "release",
+    output: process.env.JIDIAN_DESKTOP_OUTPUT || "release",
     buildResources: "build",
   },
   files: [
@@ -33,6 +33,13 @@ module.exports = {
     hardenedRuntime: true,
     gatekeeperAssess: false,
     icon: path.join("build", "icon.icns"),
+    // Keep the Chinese display name while making the app discoverable as "jidian" in Spotlight.
+    extendInfo: {
+      // Electron derives Helper app names from CFBundleName, so this must match productName.
+      CFBundleName: "基点",
+      CFBundleDisplayName: "基点",
+      CFBundleSpokenName: "jidian",
+    },
   },
   dmg: {
     sign: false,

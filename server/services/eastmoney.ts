@@ -67,6 +67,11 @@ function parseNavResponse(text: string) {
   const contentMatch = text.match(/content:"([\s\S]*?)",records:/);
   const recordsMatch = text.match(/records:(\d+)/);
   const pagesMatch = text.match(/pages:(\d+)/);
+  if (!contentMatch || !recordsMatch) {
+    const error = new Error("净值数据源返回异常，未包含可解析的历史净值数据") as Error & { status?: number };
+    error.status = 502;
+    throw error;
+  }
   const html = contentMatch ? contentMatch[1].replace(/\\"/g, '"') : "";
   const $ = cheerio.load(html);
   const rows: Array<{ date: string; nav: number; accumulatedNav: number | null }> = [];
@@ -95,6 +100,73 @@ function parseNavResponse(text: string) {
     records: Number(recordsMatch?.[1] || rows.length),
     pages: Number(pagesMatch?.[1] || 1),
   };
+}
+
+type FundNavRow = { date: string; nav: number; accumulatedNav: number | null };
+
+function parseFundNavJson(payload: any) {
+  const list = Array.isArray(payload?.Data?.LSJZList) ? payload.Data.LSJZList : [];
+  const rows = list
+    .map((item: any) => {
+      const date = String(item?.FSRQ || "");
+      const nav = Number(item?.DWJZ);
+      const accumulatedNav = Number(item?.LJJZ);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(nav) || nav <= 0) return null;
+      return {
+        date,
+        nav,
+        accumulatedNav: Number.isFinite(accumulatedNav) && accumulatedNav > 0 ? accumulatedNav : null,
+      };
+    })
+    .filter(Boolean) as FundNavRow[];
+
+  if (payload?.ErrCode && payload.ErrCode !== 0) {
+    const error = new Error(`净值数据源请求失败：${payload.ErrMsg || payload.ErrCode}`) as Error & { status?: number };
+    error.status = 502;
+    throw error;
+  }
+
+  return rows;
+}
+
+async function fetchNavHistoryFromJson(code: string, startDate: string, endDate: string) {
+  const rows: FundNavRow[] = [];
+  let page = 1;
+  let fetchedPages = 0;
+
+  while (true) {
+    const url = new URL("https://api.fund.eastmoney.com/f10/lsjz");
+    url.searchParams.set("fundCode", code);
+    url.searchParams.set("pageIndex", String(page));
+    url.searchParams.set("pageSize", "100");
+    url.searchParams.set("startDate", startDate || "");
+    url.searchParams.set("endDate", endDate || "");
+
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 FundDCA/1.0",
+        Referer: `https://fund.eastmoney.com/${code}.html`,
+      },
+    });
+    if (!response.ok) {
+      const error = new Error(`净值数据源暂时不可用（HTTP ${response.status}）`) as Error & { status?: number };
+      error.status = 502;
+      throw error;
+    }
+
+    const pageRows = parseFundNavJson(await response.json());
+    rows.push(...pageRows);
+    fetchedPages += 1;
+    if (pageRows.length < 100) break;
+    page += 1;
+  }
+
+  return {
+    rows,
+    sourceRecords: rows.length,
+    sourcePages: fetchedPages,
+    fetchedPages,
+  } satisfies PriceHistoryFetchResult;
 }
 
 async function fetchNavPage({ code, page, startDate, endDate }: { code: string; page: number; startDate: string; endDate: string }) {
@@ -127,24 +199,29 @@ async function fetchNavPage({ code, page, startDate, endDate }: { code: string; 
 const FULL_NAV_SYNC_BATCH_DELAY_MS = 80;
 
 export async function fetchNavHistory(code: string, startDate: string, endDate: string) {
-  const firstPage = await fetchNavPage({ code, page: 1, startDate, endDate });
-  const allRows = [...firstPage.rows];
-  const pages = firstPage.pages || 1;
+  try {
+    return await fetchNavHistoryFromJson(code, startDate, endDate);
+  } catch (error) {
+    logWarn(`[fund-nav] ${new Date().toISOString()} JSON 数据源失败，回退旧接口 code=${code} error=${error instanceof Error ? error.message : String(error)}`);
+    const firstPage = await fetchNavPage({ code, page: 1, startDate, endDate });
+    const allRows = [...firstPage.rows];
+    const pages = firstPage.pages || 1;
 
-  for (let page = 2; page <= pages; page += 1) {
-    const result = await fetchNavPage({ code, page, startDate, endDate });
-    allRows.push(...result.rows);
-    if (!startDate && page % 10 === 0) {
-      await new Promise((resolve) => setTimeout(resolve, FULL_NAV_SYNC_BATCH_DELAY_MS));
+    for (let page = 2; page <= pages; page += 1) {
+      const result = await fetchNavPage({ code, page, startDate, endDate });
+      allRows.push(...result.rows);
+      if (!startDate && page % 10 === 0) {
+        await new Promise((resolve) => setTimeout(resolve, FULL_NAV_SYNC_BATCH_DELAY_MS));
+      }
     }
-  }
 
-  return {
-    rows: allRows,
-    sourceRecords: firstPage.records,
-    sourcePages: firstPage.pages,
-    fetchedPages: pages,
-  } satisfies PriceHistoryFetchResult;
+    return {
+      rows: allRows,
+      sourceRecords: firstPage.records,
+      sourcePages: firstPage.pages,
+      fetchedPages: pages,
+    } satisfies PriceHistoryFetchResult;
+  }
 }
 
 type StockPriceRow = {

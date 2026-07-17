@@ -1,10 +1,20 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../api/client";
-import { notifyError } from "../lib/notifications";
+import { notifyError, notifySuccess } from "../lib/notifications";
 import type { Fund } from "../types/fund";
 import { todayISO } from "../utils/date";
 
 type RunWithBusy = <T>(label: string, action: () => Promise<T>) => Promise<T | null>;
+
+interface SyncResult {
+  imported?: number;
+  confirmedTrades?: number;
+  sourceRecords?: number;
+  startDate?: string;
+  endDate?: string | null;
+  skipped?: boolean;
+  reason?: "syncing" | "up-to-date" | string;
+}
 
 interface LoadFundsOptions {
   keepSelection?: boolean;
@@ -60,7 +70,7 @@ export function useAssetActions({
     const isStock = selectedFund.assetType === "stock";
 
     const result = await runWithBusy(isStock ? "更新价格中..." : "更新净值中...", async () => {
-      const payload = await api<{ fund: Fund; sync?: { imported?: number; confirmedTrades?: number } }>(
+      const payload = await api<{ fund: Fund; sync?: SyncResult }>(
         isStock ? `/api/assets/${selectedFund.id}/sync-price` : `/api/funds/${selectedFund.id}/sync-nav`,
         {
           method: "POST",
@@ -75,6 +85,7 @@ export function useAssetActions({
       }
       await loadAccountSummary();
       refreshChart();
+      notifySuccess(getSyncResultMessage(isStock, payload.sync));
       return true;
     });
     return Boolean(result);
@@ -141,4 +152,18 @@ export function useAssetActions({
     handleSaveDropRate,
     handleSaveManualPrice,
   };
+}
+
+function getSyncResultMessage(isStock: boolean, sync?: SyncResult) {
+  const assetLabel = isStock ? "价格" : "净值";
+  if (sync?.skipped && sync.reason === "syncing") return `${assetLabel}正在同步中，请稍后刷新查看结果。`;
+  if (sync?.skipped && sync.reason === "up-to-date") return `${assetLabel}已经是最新，无需更新。`;
+
+  const imported = Number(sync?.imported || 0);
+  const confirmedTrades = Number(sync?.confirmedTrades || 0);
+  const checkedFrom = sync?.startDate ? `已检查 ${sync.startDate} 至今的数据源。` : "已检查全部历史数据源。";
+  if (confirmedTrades > 0) return `同步完成，新增或更新 ${imported} 条${assetLabel}，确认 ${confirmedTrades} 笔待确认交易。`;
+  if (imported > 0) return `同步完成，新增或更新 ${imported} 条${assetLabel}。`;
+  if (Number(sync?.sourceRecords) === 0) return `同步完成，数据源在该范围内没有返回${assetLabel}。${checkedFrom}`;
+  return `同步完成，${assetLabel}数据没有变化。${checkedFrom}`;
 }

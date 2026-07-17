@@ -193,13 +193,14 @@ export async function syncFundNav(fundId: number, options: SyncOptions = {}) {
 
   const startDate = options.fullHistory
     ? ""
-    : options.startDate ?? getDefaultSyncStartDate(fundId, { includeLatestDay: isStock && source === "manual" });
+    : options.startDate ?? getDefaultSyncStartDate(fundId, { includeLatestDay: source === "manual" });
   const endDate = options.endDate || "";
 
-  if (isStock && source === "manual") {
-    logNavSync("股票手动同步将包含最新交易日", {
+  if (source === "manual") {
+    logNavSync("手动同步将包含最近已保存数据", {
       fundId,
       code: fund.code,
+      assetType: fund.asset_type,
       computedStartDate: startDate || "成立以来",
     });
   }

@@ -2,9 +2,9 @@ import { Router } from "express";
 import { db } from "../db/database";
 import { fetchFundProfile, fetchStockProfile } from "../services/eastmoney";
 import { getChartData, getFundById, getPaginatedNavHistory, getPaginatedPriceHistory, listFunds, mapFund } from "../services/funds";
-import { getDefaultSyncStartDate, syncActiveFundsInBackground, syncAssetPrice, syncFundNav } from "../services/navSync";
+import { syncActiveFundsInBackground, syncAssetPrice, syncFundNav } from "../services/navSync";
 import { getAccountIdFromRequest } from "../services/accounts";
-import { logInfo } from "../utils/logger";
+import { logError, logInfo } from "../utils/logger";
 import { assertDate, assertPositiveNumber, cleanText, normalizeAssetCode, normalizeCode } from "../utils/validators";
 import { toHttpError } from "../utils/httpError";
 
@@ -225,42 +225,51 @@ fundRoutes.get("/api/assets/:id/chart", (req, res) => {
 });
 
 fundRoutes.post("/api/funds/:id/sync-nav", async (req, res, next) => {
+  const fundId = Number(req.params.id);
+  const accountId = getAccountIdFromRequest(req);
+  const fullHistory = req.body.fullHistory === true && !req.body.startDate;
+  const requestedStartDate = req.body.startDate;
+  const requestedEndDate = req.body.endDate;
   try {
-    const fundId = Number(req.params.id);
-    const accountId = getAccountIdFromRequest(req);
-    const fullHistory = req.body.fullHistory === true && !req.body.startDate;
     const startDate = req.body.startDate
       ? assertDate(req.body.startDate, "开始日期")
-      : getDefaultSyncStartDate(fundId);
+      : undefined;
     const endDate = req.body.endDate ? assertDate(req.body.endDate, "结束日期") : "";
+    logInfo(`[nav-sync-api] ${new Date().toISOString()} 请求更新净值 fundId=${fundId} accountId=${accountId} fullHistory=${fullHistory} startDate=${startDate || "auto"} endDate=${endDate || "最新"}`);
     const sync = await syncFundNav(fundId, { startDate, endDate, fullHistory, source: "manual" });
+    logInfo(`[nav-sync-api] ${new Date().toISOString()} 更新净值完成 fundId=${fundId} accountId=${accountId} imported=${sync.imported || 0} skipped=${Boolean(sync.skipped)} reason=${sync.reason || "none"} confirmedTrades=${sync.confirmedTrades || 0}`);
 
     res.json({
       fund: mapFund(getFundById(fundId, { accountId, includeHidden: true }), accountId),
       sync,
     });
   } catch (error) {
+    logError(`[nav-sync-api] 更新净值失败 fundId=${fundId} accountId=${accountId} fullHistory=${fullHistory} requestedStartDate=${requestedStartDate || "auto"} requestedEndDate=${requestedEndDate || "最新"}`, error);
     next(error);
   }
 });
 
 fundRoutes.post("/api/assets/:id/sync-price", async (req, res, next) => {
+  const fundId = Number(req.params.id);
+  const accountId = getAccountIdFromRequest(req);
+  const fullHistory = req.body.fullHistory === true && !req.body.startDate;
+  const requestedStartDate = req.body.startDate;
+  const requestedEndDate = req.body.endDate;
   try {
-    const fundId = Number(req.params.id);
-    const accountId = getAccountIdFromRequest(req);
-    const fullHistory = req.body.fullHistory === true && !req.body.startDate;
     const startDate = req.body.startDate
       ? assertDate(req.body.startDate, "开始日期")
       : undefined;
     const endDate = req.body.endDate ? assertDate(req.body.endDate, "结束日期") : "";
     logInfo(`[price-sync-api] ${new Date().toISOString()} 请求同步价格 fundId=${fundId} accountId=${accountId} fullHistory=${fullHistory} startDate=${startDate || "auto"} endDate=${endDate || "最新"}`);
     const sync = await syncAssetPrice(fundId, { startDate, endDate, fullHistory, source: "manual" });
+    logInfo(`[price-sync-api] ${new Date().toISOString()} 同步价格完成 fundId=${fundId} accountId=${accountId} imported=${sync.imported || 0} skipped=${Boolean(sync.skipped)} reason=${sync.reason || "none"} confirmedTrades=${sync.confirmedTrades || 0}`);
 
     res.json({
       fund: mapFund(getFundById(fundId, { accountId, includeHidden: true }), accountId),
       sync,
     });
   } catch (error) {
+    logError(`[price-sync-api] 同步价格失败 fundId=${fundId} accountId=${accountId} fullHistory=${fullHistory} requestedStartDate=${requestedStartDate || "auto"} requestedEndDate=${requestedEndDate || "最新"}`, error);
     next(error);
   }
 });
