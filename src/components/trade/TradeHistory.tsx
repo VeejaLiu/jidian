@@ -1,73 +1,94 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { DataTable } from "../DataTable";
+import { EditDividendModal, type DividendDraft } from "./EditDividendModal";
 import { TradeActionMenu } from "./TradeActionMenu";
-import type { Fund, TradeRecord } from "../../types/fund";
+import type { DividendRecord, Fund, TradeRecord } from "../../types/fund";
 import { formatMoney, formatNav, formatUnits, tradeTypeLabel } from "../../utils/format";
+
+type TimelineRecord = (TradeRecord & { recordKind: "trade" }) | (DividendRecord & { recordKind: "dividend"; status?: never; fee?: never });
 
 interface TradeHistoryProps {
   fund: Fund;
+  busy: boolean;
+  onAddRecord: () => void;
   onEditTrade: (record: TradeRecord) => void;
   onDeleteTrade: (record: TradeRecord) => void;
+  onUpdateDividend: (record: DividendRecord, draft: DividendDraft) => void;
 }
 
-export function TradeHistory({ fund, onEditTrade, onDeleteTrade }: TradeHistoryProps) {
+export function TradeHistory({ fund, busy, onAddRecord, onEditTrade, onDeleteTrade, onUpdateDividend }: TradeHistoryProps) {
   const isStock = fund.assetType === "stock";
   const [page, setPage] = useState(1);
+  const [editingDividend, setEditingDividend] = useState<DividendRecord | null>(null);
+  const [dividendDraft, setDividendDraft] = useState<DividendDraft | null>(null);
   const trades = fund.trades || fund.buys || [];
   const dividends = fund.dividends || [];
-  const latestTrade = trades[0];
+  const records = useMemo<TimelineRecord[]>(() => [
+    ...trades.map((record) => ({ ...record, recordKind: "trade" as const })),
+    ...dividends.map((record) => ({ ...record, recordKind: "dividend" as const })),
+  ].sort((left, right) => left.date === right.date ? right.id - left.id : right.date.localeCompare(left.date)), [dividends, trades]);
+  const latestRecord = records[0];
   const buyDropMap = useMemo(() => buildBuyDropMap(trades), [trades]);
-  const sellReturnRateMap = useMemo(() => buildSellReturnRateMap(trades), [trades]);
-  const columns = useMemo(() => {
+  const sellReturnRateMap = useMemo(() => buildSellReturnRateMap(trades, dividends), [dividends, trades]);
+  const columns = useMemo<Array<{ key: string; render: (record: TimelineRecord) => ReactNode }>>(() => {
     const baseColumns = [
       {
         key: "type",
-        render: (record: TradeRecord) => (
-          <span className={`trade-badge ${record.type === "sell" ? "sell" : "buy"}`}>
-            {tradeTypeLabel(record.type)}
+        render: (record: TimelineRecord) => (
+          <span className="trade-type-cell">
+            <span className={`trade-badge ${record.recordKind === "trade" ? (record.type === "sell" ? "sell" : "buy") : "dividend"}`}>
+              {record.recordKind === "trade" ? tradeTypeLabel(record.type) : dividendTypeLabel(record.type)}
+            </span>
+            {record.recordKind === "trade" && record.positionStage && (
+              <span className={`position-stage-tag ${record.positionStage}`}>
+                {record.positionStage === "opening" ? "建仓" : "清仓"}
+              </span>
+            )}
           </span>
         ),
       },
       {
         key: "status",
-        render: (record: TradeRecord) => (
-          <span className={`trade-status ${record.status === "pending" ? "pending" : "confirmed"}`}>
-            {record.status === "pending" ? "待确认" : "已确认"}
+        render: (record: TimelineRecord) => (
+          <span className={`trade-status ${record.recordKind === "trade" && record.status === "pending" ? "pending" : "confirmed"}`}>
+            {record.recordKind === "trade" && record.status === "pending" ? "待确认" : "已确认"}
           </span>
         ),
       },
-      { key: "date", render: (record: TradeRecord) => record.date },
-      { key: "nav", render: (record: TradeRecord) => (record.status === "pending" ? (isStock ? "待同步" : "待公布") : formatNav(record.nav)) },
+      { key: "date", render: (record: TimelineRecord) => record.date },
+      { key: "nav", render: (record: TimelineRecord) => record.recordKind === "dividend" ? "--" : (record.status === "pending" ? (isStock ? "待同步" : "待公布") : formatNav(record.nav)) },
       {
         key: "buyDrop",
-        render: (record: TradeRecord) => <BuyDropCell record={record} drop={buyDropMap.get(record.id)} />,
+        render: (record: TimelineRecord) => record.recordKind === "trade" ? <BuyDropCell record={record} drop={buyDropMap.get(record.id)} /> : <span className="muted-cell">--</span>,
       },
       {
         key: "sellReturnRate",
-        render: (record: TradeRecord) => <SellReturnRateCell record={record} rate={sellReturnRateMap.get(record.id)} />,
+        render: (record: TimelineRecord) => record.recordKind === "trade" ? <SellReturnRateCell record={record} rate={sellReturnRateMap.get(record.id)} /> : <span className="muted-cell">--</span>,
       },
       {
         key: "amount",
-        render: (record: TradeRecord) => (record.status === "pending" && !Number.isFinite(Number(record.amount)) ? "待确认" : formatMoney(record.amount)),
+        render: (record: TimelineRecord) => record.recordKind === "dividend" && (record.type === "stock_bonus" || record.type === "capital_increase")
+          ? "--"
+          : (record.recordKind === "trade" && record.status === "pending" && !Number.isFinite(Number(record.amount)) ? "待确认" : formatMoney(record.amount)),
       },
     ];
 
     baseColumns.push({
       key: "fee",
-      render: (record: TradeRecord) => formatMoney(record.fee ?? 0),
+      render: (record: TimelineRecord) => record.recordKind === "trade" ? formatMoney(record.fee ?? 0) : "--",
     });
 
     baseColumns.push(
-      { key: "shares", render: (record: TradeRecord) => (record.status === "pending" ? "待确认" : formatUnits(record.shares, fund.assetType)) },
-      { key: "note", render: (record: TradeRecord) => record.note || "" },
+      { key: "shares", render: (record: TimelineRecord) => record.recordKind === "trade" && record.status === "pending" ? "待确认" : formatUnits(record.shares, fund.assetType) },
+      { key: "note", render: (record: TimelineRecord) => record.note || "" },
     );
 
     return baseColumns;
   }, [buyDropMap, fund.assetType, isStock, sellReturnRateMap]);
   const pageSize = 5;
-  const totalPages = Math.max(1, Math.ceil(trades.length / pageSize));
+  const totalPages = Math.max(1, Math.ceil(records.length / pageSize));
   const safePage = Math.min(page, totalPages);
-  const pageTrades = trades.slice((safePage - 1) * pageSize, safePage * pageSize);
+  const pageRecords = records.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   useEffect(() => {
     setPage(1);
@@ -77,23 +98,35 @@ export function TradeHistory({ fund, onEditTrade, onDeleteTrade }: TradeHistoryP
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
 
+  const openDividendEditor = (record: DividendRecord) => {
+    setEditingDividend(record);
+    setDividendDraft({
+      type: record.type,
+      date: record.date,
+      amount: String(record.amount ?? ""),
+      nav: String(record.nav ?? ""),
+      shares: String(record.shares ?? ""),
+      note: record.note || "",
+    });
+  };
+
+  const submitDividendEdit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!editingDividend || !dividendDraft) return;
+    onUpdateDividend(editingDividend, dividendDraft);
+    setEditingDividend(null);
+    setDividendDraft(null);
+  };
+
   return (
     <div className="table-block">
       <div className="table-title">
         <div>
           <h3>交易记录</h3>
-          <span>{latestTrade ? `最近：${latestTrade.date} / ${tradeTypeLabel(latestTrade.type)} / ${formatNav(latestTrade.nav)}` : ""}</span>
+          <span>{latestRecord ? `最近：${latestRecord.date} / ${latestRecord.recordKind === "trade" ? tradeTypeLabel(latestRecord.type) : dividendTypeLabel(latestRecord.type)}` : ""}</span>
         </div>
+        <button className="secondary-button add-record-button" type="button" disabled={busy} onClick={onAddRecord}>添加记录</button>
       </div>
-      {dividends.length > 0 && (
-        <div className="dividend-list" aria-label="分红记录">
-          {dividends.slice(0, 3).map((dividend) => (
-            <span key={dividend.id}>
-              {dividend.date} / {dividend.type === "cash" ? "现金分红" : "红利再投"} / {formatMoney(dividend.amount)}
-            </span>
-          ))}
-        </div>
-      )}
       <div className="table-wrap buy-history-wrap">
         <table>
           <thead>
@@ -112,10 +145,14 @@ export function TradeHistory({ fund, onEditTrade, onDeleteTrade }: TradeHistoryP
             </tr>
           </thead>
           <DataTable
-            records={pageTrades}
+            records={pageRecords}
             columns={columns}
             renderActions={(record) => (
-              <TradeActionMenu record={record} onEdit={onEditTrade} onDelete={onDeleteTrade} />
+              <TradeActionMenu
+                record={record}
+                onEdit={(current) => current.recordKind === "trade" ? onEditTrade(current) : openDividendEditor(current)}
+                onDelete={record.recordKind === "trade" ? (current) => onDeleteTrade(current as TradeRecord) : undefined}
+              />
             )}
             minRows={pageSize}
             emptyText="暂无交易记录"
@@ -123,13 +160,13 @@ export function TradeHistory({ fund, onEditTrade, onDeleteTrade }: TradeHistoryP
         </table>
       </div>
       <div className="pagination compact-pagination">
-        {trades.length > pageSize && (
+        {records.length > pageSize && (
           <>
             <button className="secondary-button" type="button" disabled={safePage <= 1} onClick={() => setPage((current) => current - 1)}>
               上一页
             </button>
             <span>
-              第 {safePage} / {totalPages} 页，共 {trades.length} 条
+              第 {safePage} / {totalPages} 页，共 {records.length} 条
             </span>
             <button className="secondary-button" type="button" disabled={safePage >= totalPages} onClick={() => setPage((current) => current + 1)}>
               下一页
@@ -137,8 +174,28 @@ export function TradeHistory({ fund, onEditTrade, onDeleteTrade }: TradeHistoryP
           </>
         )}
       </div>
+      <EditDividendModal
+        fund={fund}
+        record={editingDividend}
+        draft={dividendDraft}
+        busy={busy}
+        onDraftChange={setDividendDraft}
+        onClose={() => {
+          setEditingDividend(null);
+          setDividendDraft(null);
+        }}
+        onSubmit={submitDividendEdit}
+      />
     </div>
   );
+}
+
+function dividendTypeLabel(type: string) {
+  if (type === "reinvest") return "红利再投";
+  if (type === "stock_bonus") return "送股";
+  if (type === "capital_increase") return "转增股本";
+  if (type === "dividend_tax") return "股息红利个人所得税";
+  return "现金分红";
 }
 
 type BuyDropInfo =
@@ -160,7 +217,7 @@ function buildBuyDropMap(trades: TradeRecord[]) {
   const map = new Map<number, BuyDropInfo>();
 
   confirmedBuys.forEach((trade, index) => {
-    if (index === 0) {
+    if (index === 0 || trade.positionStage === "opening") {
       map.set(trade.id, { kind: "first" });
       return;
     }
@@ -174,11 +231,14 @@ function buildBuyDropMap(trades: TradeRecord[]) {
   return map;
 }
 
-function buildSellReturnRateMap(trades: TradeRecord[]) {
-  const timeline = [...trades].sort((left, right) => {
+function buildSellReturnRateMap(trades: TradeRecord[], dividends: DividendRecord[]) {
+  const timeline = [
+    ...trades.map((trade) => ({ kind: "trade" as const, date: trade.date, id: trade.id, trade })),
+    ...dividends.map((dividend) => ({ kind: "dividend" as const, date: dividend.date, id: dividend.id, dividend })),
+  ].sort((left, right) => {
     if (left.date === right.date) {
-      if (left.type === right.type) return left.id - right.id;
-      return left.type === "buy" ? -1 : 1;
+      if (left.kind === right.kind) return left.id - right.id;
+      return left.kind === "dividend" ? -1 : 1;
     }
     return left.date.localeCompare(right.date);
   });
@@ -187,7 +247,17 @@ function buildSellReturnRateMap(trades: TradeRecord[]) {
   let totalShares = 0;
   const map = new Map<number, SellReturnRateInfo>();
 
-  timeline.forEach((trade) => {
+  timeline.forEach((item) => {
+    if (item.kind === "dividend") {
+      const increasesShares = item.dividend.type === "stock_bonus"
+        || item.dividend.type === "capital_increase"
+        || item.dividend.type === "reinvest";
+      const shares = Number(item.dividend.shares);
+      if (increasesShares && Number.isFinite(shares) && shares > 0) totalShares += shares;
+      return;
+    }
+
+    const { trade } = item;
     if (trade.type === "sell" && trade.status === "pending") {
       map.set(trade.id, { kind: "pending" });
       return;

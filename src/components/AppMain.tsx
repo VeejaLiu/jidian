@@ -107,6 +107,7 @@ export function AppMain({
         onSubmitDividend={tradeActions.handleSubmitDividend}
         onEditTrade={tradeActions.handleEditTrade}
         onDeleteTrade={tradeActions.handleDeleteTrade}
+        onUpdateDividend={tradeActions.handleUpdateDividend}
       />
     </main>
   );

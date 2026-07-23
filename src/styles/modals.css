@@ -68,6 +68,112 @@
   width: min(520px, 100%);
 }
 
+.add-record-modal {
+  grid-template-rows: auto auto minmax(0, 1fr);
+  width: min(640px, 100%);
+  height: min(720px, calc(100vh - 48px));
+  overflow: hidden;
+}
+
+.add-record-modal .data-form {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+  overflow-y: auto;
+  align-content: start;
+}
+
+.add-record-modal .data-form > h3 {
+  display: none;
+}
+
+.add-record-mode-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  padding: 5px;
+  border: 1px solid rgba(94, 120, 128, 0.18);
+  border-radius: var(--button-radius);
+  background: var(--surface-strong);
+}
+
+.add-record-mode-switch button {
+  min-width: 0;
+  min-height: 42px;
+  border: 0;
+  border-radius: var(--button-radius);
+  padding: 0 12px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 800;
+  transition: color 180ms ease, background 180ms ease, box-shadow 180ms ease;
+}
+
+.add-record-mode-switch button.active {
+  background: #ffffff;
+  color: var(--primary-dark);
+  box-shadow: 0 2px 8px rgba(29, 45, 53, 0.12);
+}
+
+.add-record-mode-switch button:not(:disabled):hover {
+  color: var(--ink);
+}
+
+.add-record-mode-switch button:focus-visible {
+  outline: 2px solid rgba(25, 123, 117, 0.45);
+  outline-offset: 2px;
+}
+
+.add-record-modal .trade-entry-form .trade-type-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding: 5px;
+  border: 1px solid rgba(94, 120, 128, 0.18);
+  border-radius: var(--button-radius);
+  background: var(--surface-strong);
+  overflow: visible;
+}
+
+.add-record-modal .trade-entry-form .trade-type-switch-animated::before {
+  display: none;
+}
+
+.add-record-modal .trade-entry-form .trade-type-switch button {
+  min-width: 0;
+  min-height: 42px;
+  border: 1px solid transparent;
+  border-radius: var(--button-radius);
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.92rem;
+  font-weight: 800;
+  opacity: 1;
+  transform: none;
+  transition: color 180ms ease, background 180ms ease, box-shadow 180ms ease;
+}
+
+.add-record-modal .trade-entry-form .trade-type-switch button.active {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(25, 123, 117, 0.24);
+}
+
+.add-record-modal .trade-entry-form .trade-type-switch button:not(:disabled):hover {
+  background: rgba(25, 123, 117, 0.1);
+  color: var(--primary-dark);
+}
+
+.add-record-modal .trade-entry-form .trade-type-switch button.active:not(:disabled):hover {
+  background: var(--primary-dark);
+  color: #ffffff;
+}
+
 .fund-action-modal {
   width: min(500px, 100%);
 }

@@ -46,6 +46,46 @@ export function listTrades(fundId: number, accountId: number, order: "ASC" | "DE
     .all(fundId, accountId) as TradeRecord[];
 }
 
+export function markPositionStages(trades: TradeRecord[], dividends: DividendRecord[] = []) {
+  const stages = new Map<number, NonNullable<TradeRecord["positionStage"]>>();
+  let totalShares = 0;
+  const timeline = [
+    ...trades.filter((trade) => trade.status !== "pending").map((trade) => ({ kind: "trade" as const, date: trade.date, id: Number(trade.id || 0), trade })),
+    ...dividends.map((dividend) => ({ kind: "dividend" as const, date: dividend.date, id: Number(dividend.id || 0), dividend })),
+  ].sort((left, right) => {
+    if (left.date === right.date) {
+      if (left.kind === right.kind) return left.id - right.id;
+      return left.kind === "dividend" ? -1 : 1;
+    }
+    return left.date.localeCompare(right.date);
+  });
+
+  timeline.forEach((item) => {
+    if (item.kind === "dividend") {
+      const increasesShares = item.dividend.type === "stock_bonus"
+        || item.dividend.type === "capital_increase"
+        || item.dividend.type === "reinvest";
+      const shares = Number(item.dividend.shares);
+      if (increasesShares && Number.isFinite(shares) && shares > 0) totalShares += shares;
+      return;
+    }
+
+    const shares = Number(item.trade.shares);
+    if (!Number.isFinite(shares) || shares <= 0) return;
+    const beforeShares = totalShares;
+    totalShares += item.trade.type === "buy" ? shares : -shares;
+    if (!item.trade.id) return;
+    if (item.trade.type === "buy" && beforeShares <= 0 && totalShares > 0) {
+      stages.set(item.trade.id, "opening");
+    } else if (item.trade.type === "sell" && beforeShares > 0 && totalShares <= 0.000001) {
+      stages.set(item.trade.id, "closing");
+      totalShares = 0;
+    }
+  });
+
+  return trades.map((trade) => ({ ...trade, positionStage: trade.id ? stages.get(trade.id) || null : null }));
+}
+
 export function calculatePositionFromTrades(trades: TradeRecord[], dividends: DividendRecord[] = []) {
   let totalAmount = 0;
   let totalShares = 0;
@@ -64,7 +104,7 @@ export function calculatePositionFromTrades(trades: TradeRecord[], dividends: Di
   ].sort((left, right) => {
     if (left.date === right.date) {
       if (left.kind === right.kind) return left.id - right.id;
-      return left.kind === "trade" ? -1 : 1;
+      return left.kind === "dividend" ? -1 : 1;
     }
     return left.date.localeCompare(right.date);
   });
@@ -72,12 +112,16 @@ export function calculatePositionFromTrades(trades: TradeRecord[], dividends: Di
   timeline.forEach((item) => {
     if (item.kind === "dividend") {
       const amount = Number(item.dividend.amount);
-      if (!Number.isFinite(amount) || amount <= 0) return;
-      dividendIncome += amount;
-      if (item.dividend.type === "reinvest") {
+      const increasesShares = item.dividend.type === "stock_bonus"
+        || item.dividend.type === "capital_increase"
+        || item.dividend.type === "reinvest";
+      if (increasesShares) {
         const shares = Number(item.dividend.shares);
         if (Number.isFinite(shares) && shares > 0) totalShares += shares;
+        return;
       }
+      if (!Number.isFinite(amount) || amount <= 0) return;
+      dividendIncome += item.dividend.type === "dividend_tax" ? -amount : amount;
       return;
     }
 
@@ -120,6 +164,13 @@ export function calculatePositionFromTrades(trades: TradeRecord[], dividends: Di
     }
   });
 
+  const normalize = (value: number) => Number(value.toFixed(10));
+  totalAmount = normalize(totalAmount);
+  totalShares = normalize(totalShares);
+  realizedAmount = normalize(realizedAmount);
+  realizedCost = normalize(realizedCost);
+  dividendIncome = normalize(dividendIncome);
+
   const hasOpenPosition = totalShares > 0;
   const displayAverageCost = hasOpenPosition
     ? (totalShares > 0 ? totalAmount / totalShares : null)
@@ -129,35 +180,55 @@ export function calculatePositionFromTrades(trades: TradeRecord[], dividends: Di
   return {
     totalAmount,
     totalShares,
-    averageCost: totalShares > 0 ? totalAmount / totalShares : null,
+    averageCost: totalShares > 0 ? normalize(totalAmount / totalShares) : null,
     displayAverageCost,
     displayAverageCostLabel,
     hasOpenPosition,
     realizedAmount,
     realizedCost,
     dividendIncome,
-    realizedProfit: realizedAmount - realizedCost + dividendIncome,
+    realizedProfit: normalize(realizedAmount - realizedCost + dividendIncome),
   };
 }
 
 const SELL_AMOUNT_TOLERANCE = 0.01;
 
-function findNegativePositionState(trades: TradeRecord[]) {
+function findNegativePositionState(trades: TradeRecord[], dividends: DividendRecord[]) {
   let totalShares = 0;
 
-  for (const trade of trades.filter((item) => item.status !== "pending")) {
-    const shares = Number(trade.shares);
+  const timeline = [
+    ...trades.filter((trade) => trade.status !== "pending").map((trade) => ({ kind: "trade" as const, date: trade.date, id: Number(trade.id || 0), trade })),
+    ...dividends.map((dividend) => ({ kind: "dividend" as const, date: dividend.date, id: Number(dividend.id || 0), dividend })),
+  ].sort((left, right) => {
+    if (left.date === right.date) {
+      if (left.kind === right.kind) return left.id - right.id;
+      return left.kind === "dividend" ? -1 : 1;
+    }
+    return left.date.localeCompare(right.date);
+  });
+
+  for (const item of timeline) {
+    if (item.kind === "dividend") {
+      const increasesShares = item.dividend.type === "stock_bonus"
+        || item.dividend.type === "capital_increase"
+        || item.dividend.type === "reinvest";
+      const shares = Number(item.dividend.shares);
+      if (increasesShares && Number.isFinite(shares) && shares > 0) totalShares += shares;
+      continue;
+    }
+
+    const shares = Number(item.trade.shares);
     if (!Number.isFinite(shares) || shares <= 0) continue;
 
-    if (trade.type === "buy") {
+    if (item.trade.type === "buy") {
       totalShares += shares;
-    } else if (trade.type === "sell") {
+    } else if (item.trade.type === "sell") {
       totalShares -= shares;
     }
 
     if (totalShares < -0.000001) {
       return {
-        trade,
+        trade: item.trade,
         deficitShares: Math.abs(totalShares),
       };
     }
@@ -294,8 +365,16 @@ export function buildTradeInput(fundId: number, body: any, forcedType: "buy" | "
 export function assertTradeTimeline(fundId: number, accountId: number, candidateTrade: TradeRecord, ignoredTradeId: number | null = null) {
   if (candidateTrade.status === "pending") return;
   const existingTrades = listTrades(fundId, accountId, "ASC").filter((trade) => trade.id !== ignoredTradeId);
+  const dividends = db
+    .prepare(
+      `SELECT id, dividend_type AS type, dividend_date AS date, amount, dividend_nav AS nav, shares, note
+       FROM dividend_records
+       WHERE fund_id = ? AND account_id = ?
+       ORDER BY dividend_date ASC, id ASC`,
+    )
+    .all(fundId, accountId) as DividendRecord[];
   const candidateTrades = sortTradesByTimeline([...existingTrades, candidateTrade]);
-  const negativeState = findNegativePositionState(candidateTrades);
+  const negativeState = findNegativePositionState(candidateTrades, dividends);
   if (negativeState) {
     const nav = Number(negativeState.trade.nav);
     const allowedDeficitShares = Number.isFinite(nav) && nav > 0 ? SELL_AMOUNT_TOLERANCE / nav : 0;

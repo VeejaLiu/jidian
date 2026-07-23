@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from "react";
-import type { TradeRecord } from "../../types/fund";
-
-interface TradeActionMenuProps {
-  record: TradeRecord;
-  onEdit: (record: TradeRecord) => void;
-  onDelete: (record: TradeRecord) => void;
+interface ActionRecord {
+  id: number;
 }
 
-export function TradeActionMenu({ record, onEdit, onDelete }: TradeActionMenuProps) {
+interface TradeActionMenuProps<T extends ActionRecord> {
+  record: T;
+  onEdit: (record: T) => void;
+  onDelete?: (record: T) => void;
+}
+
+export function TradeActionMenu<T extends ActionRecord>({ record, onEdit, onDelete }: TradeActionMenuProps<T>) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
@@ -53,17 +55,19 @@ export function TradeActionMenu({ record, onEdit, onDelete }: TradeActionMenuPro
           >
             编辑
           </button>
-          <button
-            className="danger"
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              setOpen(false);
-              onDelete(record);
-            }}
-          >
-            删除
-          </button>
+          {onDelete && (
+            <button
+              className="danger"
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+                onDelete(record);
+              }}
+            >
+              删除
+            </button>
+          )}
         </div>
       )}
     </div>

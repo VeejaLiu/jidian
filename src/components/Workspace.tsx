@@ -5,7 +5,8 @@ import { FundActionMenu, type FundAction } from "./fund/FundActionMenu";
 import { FundActionModal } from "./fund/FundActionModal";
 import { SummaryCards } from "./fund/SummaryCards";
 import { TradeSection } from "./trade/TradeSection";
-import type { AccountSummary, ChartData, Fund, TradeRecord, TradeType, UserAccount } from "../types/fund";
+import type { AccountSummary, ChartData, DividendRecord, Fund, TradeRecord, TradeType, UserAccount } from "../types/fund";
+import type { DividendDraft } from "./trade/EditDividendModal";
 import { formatDateTime, formatNav } from "../utils/format";
 
 interface WorkspaceProps {
@@ -57,6 +58,7 @@ interface WorkspaceProps {
   onSubmitDividend: (event: FormEvent<HTMLFormElement>) => void;
   onEditTrade: (record: TradeRecord) => void;
   onDeleteTrade: (record: TradeRecord) => void;
+  onUpdateDividend: (record: DividendRecord, draft: DividendDraft) => void;
 }
 
 export function Workspace({
@@ -108,6 +110,7 @@ export function Workspace({
   onSubmitDividend,
   onEditTrade,
   onDeleteTrade,
+  onUpdateDividend,
 }: WorkspaceProps) {
   const [fundAction, setFundAction] = useState<FundAction | null>(null);
   const currentDropRatePercent = ((Number(fund?.dropRate) || 0.04) * 100).toFixed(1);
@@ -212,6 +215,7 @@ export function Workspace({
             onDividendSubmit={onSubmitDividend}
             onEditTrade={onEditTrade}
             onDeleteTrade={onDeleteTrade}
+            onUpdateDividend={onUpdateDividend}
           />
         </div>
       )}

@@ -334,15 +334,36 @@ export function migrateStockPriceFields() {
   }
 }
 
+export function migrateStocksToUnadjustedPrices() {
+  const migrationKey = "stock_prices_use_unadjusted_source_v1";
+  if (hasMigrationFlag(migrationKey)) return;
+
+  db.transaction(() => {
+    // Retain the cached rows until the scheduled full sync replaces them, so
+    // startup never leaves the portfolio without a displayed market value.
+    db.exec(`
+      INSERT INTO nav_sync_state (fund_id, full_history_synced, full_history_synced_at, last_incremental_sync_at)
+      SELECT id, 0, NULL, NULL
+      FROM funds
+      WHERE asset_type = 'stock'
+      ON CONFLICT(fund_id) DO UPDATE SET
+        full_history_synced = 0,
+        full_history_synced_at = NULL,
+        last_incremental_sync_at = NULL;
+    `);
+    setMigrationFlag(migrationKey);
+  })();
+}
+
 export function migrateDividendRecords() {
   db.exec(`
     CREATE TABLE IF NOT EXISTS dividend_records (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       account_id INTEGER NOT NULL DEFAULT 1,
       fund_id INTEGER NOT NULL,
-      dividend_type TEXT NOT NULL CHECK (dividend_type IN ('cash', 'reinvest')),
+      dividend_type TEXT NOT NULL CHECK (dividend_type IN ('cash', 'reinvest', 'stock_bonus', 'capital_increase', 'dividend_tax')),
       dividend_date TEXT NOT NULL CHECK (date(dividend_date) = dividend_date),
-      amount REAL NOT NULL CHECK (amount > 0),
+      amount REAL CHECK (amount IS NULL OR amount > 0),
       dividend_nav REAL CHECK (dividend_nav IS NULL OR dividend_nav > 0),
       shares REAL CHECK (shares IS NULL OR shares > 0),
       note TEXT,
@@ -353,6 +374,37 @@ export function migrateDividendRecords() {
 
     CREATE INDEX IF NOT EXISTS idx_dividend_records_fund_date
       ON dividend_records (account_id, fund_id, dividend_date DESC, id DESC);
+  `);
+}
+
+export function migrateDividendRecordTypes() {
+  const table = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'dividend_records'").get() as { sql?: string } | undefined;
+  if (!table?.sql || table.sql.includes("capital_increase")) return;
+
+  db.exec(`
+    PRAGMA foreign_keys = OFF;
+    CREATE TABLE dividend_records_new (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      account_id INTEGER NOT NULL DEFAULT 1,
+      fund_id INTEGER NOT NULL,
+      dividend_type TEXT NOT NULL CHECK (dividend_type IN ('cash', 'reinvest', 'stock_bonus', 'capital_increase', 'dividend_tax')),
+      dividend_date TEXT NOT NULL CHECK (date(dividend_date) = dividend_date),
+      amount REAL CHECK (amount IS NULL OR amount > 0),
+      dividend_nav REAL CHECK (dividend_nav IS NULL OR dividend_nav > 0),
+      shares REAL CHECK (shares IS NULL OR shares > 0),
+      note TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (account_id) REFERENCES user_accounts (id) ON DELETE CASCADE,
+      FOREIGN KEY (fund_id) REFERENCES funds (id) ON DELETE CASCADE
+    );
+    INSERT INTO dividend_records_new (id, account_id, fund_id, dividend_type, dividend_date, amount, dividend_nav, shares, note, created_at)
+    SELECT id, account_id, fund_id, dividend_type, dividend_date, amount, dividend_nav, shares, note, created_at
+    FROM dividend_records;
+    DROP TABLE dividend_records;
+    ALTER TABLE dividend_records_new RENAME TO dividend_records;
+    CREATE INDEX idx_dividend_records_fund_date
+      ON dividend_records (account_id, fund_id, dividend_date DESC, id DESC);
+    PRAGMA foreign_keys = ON;
   `);
 }
 

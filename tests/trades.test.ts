@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { calculateFundTradeAmount, calculateFundTradeShares, calculatePositionFromTrades } from "../server/services/trades";
+import { calculateFundTradeAmount, calculateFundTradeShares, calculatePositionFromTrades, markPositionStages } from "../server/services/trades";
 
 test("calculatePositionFromTrades tracks open position and realized profit", () => {
   const position = calculatePositionFromTrades([
@@ -28,7 +28,7 @@ test("calculatePositionFromTrades ignores pending trades", () => {
   assert.equal(position.realizedProfit, 0);
 });
 
-test("calculatePositionFromTrades includes cash and reinvested dividends", () => {
+test("calculatePositionFromTrades counts reinvested dividends only through the added shares", () => {
   const position = calculatePositionFromTrades(
     [
       { id: 1, type: "buy", date: "2026-01-01", nav: 1, amount: 1000, shares: 1000, status: "confirmed" },
@@ -41,8 +41,59 @@ test("calculatePositionFromTrades includes cash and reinvested dividends", () =>
 
   assert.equal(position.totalAmount, 1000);
   assert.equal(position.totalShares, 1050);
-  assert.equal(position.dividendIncome, 90);
-  assert.equal(position.realizedProfit, 90);
+  assert.equal(position.dividendIncome, 50);
+  assert.equal(position.realizedProfit, 50);
+});
+
+test("calculatePositionFromTrades applies a same-day share increase before a sale", () => {
+  const position = calculatePositionFromTrades(
+    [
+      { id: 1, type: "buy", date: "2026-01-01", nav: 10, amount: 1000, shares: 100, status: "confirmed" },
+      { id: 2, type: "sell", date: "2026-02-01", nav: 8, amount: 1120, shares: 140, status: "confirmed" },
+    ],
+    [
+      { id: 1, type: "capital_increase", date: "2026-02-01", amount: null, shares: 40 },
+    ],
+  );
+
+  assert.equal(position.totalAmount, 0);
+  assert.equal(position.totalShares, 0);
+  assert.equal(position.realizedCost, 1000);
+  assert.equal(position.realizedProfit, 120);
+});
+
+test("markPositionStages labels opening and closing trades with share increases", () => {
+  const marked = markPositionStages(
+    [
+      { id: 1, type: "buy", date: "2026-01-01", nav: 10, amount: 1000, shares: 100, status: "confirmed" },
+      { id: 2, type: "sell", date: "2026-02-01", nav: 8, amount: 1120, shares: 140, status: "confirmed" },
+      { id: 3, type: "buy", date: "2026-03-01", nav: 7, amount: 700, shares: 100, status: "confirmed" },
+    ],
+    [
+      { id: 1, type: "capital_increase", date: "2026-02-01", amount: null, shares: 40 },
+    ],
+  );
+
+  assert.deepEqual(marked.map((trade) => trade.positionStage), ["opening", "closing", "opening"]);
+});
+
+test("calculatePositionFromTrades applies share increases and dividend tax", () => {
+  const position = calculatePositionFromTrades(
+    [
+      { id: 1, type: "buy", date: "2026-01-01", nav: 10, amount: 1000, shares: 100, status: "confirmed" },
+    ],
+    [
+      { id: 1, type: "cash", date: "2026-02-01", amount: 50 },
+      { id: 2, type: "capital_increase", date: "2026-02-02", amount: null, shares: 40 },
+      { id: 3, type: "dividend_tax", date: "2026-02-03", amount: 5 },
+    ],
+  );
+
+  assert.equal(position.totalAmount, 1000);
+  assert.equal(position.totalShares, 140);
+  assert.ok(Math.abs(Number(position.averageCost) - (1000 / 140)) < 0.000000001);
+  assert.equal(position.dividendIncome, 45);
+  assert.equal(position.realizedProfit, 45);
 });
 
 test("calculateFundTradeShares applies fees for fund buys and sells", () => {

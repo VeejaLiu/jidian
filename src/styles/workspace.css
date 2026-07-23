@@ -507,7 +507,7 @@
 
 .buy-grid {
   display: grid;
-  grid-template-columns: minmax(340px, 0.9fr) minmax(0, 1.25fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   align-items: stretch;
 }

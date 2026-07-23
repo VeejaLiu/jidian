@@ -1,7 +1,7 @@
 import { db } from "../db/database";
 import type { DividendRecord, TradeRecord } from "../types";
 import { listDividends } from "./dividends";
-import { listTrades, getPosition, calculatePositionFromTrades } from "./trades";
+import { listTrades, getPosition, calculatePositionFromTrades, markPositionStages } from "./trades";
 import { getSyncDecision } from "./syncState";
 
 export function getFundById(id: number, options: { includeHidden?: boolean; accountId?: number } = {}) {
@@ -58,8 +58,9 @@ export function mapFund(row: any, accountId: number) {
     )
     .all(row.id);
 
-  const trades = listTrades(row.id, accountId, "DESC");
+  const rawTrades = listTrades(row.id, accountId, "DESC");
   const dividends = listDividends(row.id, accountId, "DESC");
+  const trades = markPositionStages(rawTrades, dividends);
   const position = getPosition(row.id, accountId);
   const buys = trades.filter((trade) => trade.type === "buy");
   const syncDecision = getSyncDecision(row.id);
@@ -201,8 +202,9 @@ export function getChartData(fundId: number, accountId: number) {
        ORDER BY date ASC`,
     )
     .all(fundId);
-  const trades = listTrades(fundId, accountId, "ASC");
+  const rawTrades = listTrades(fundId, accountId, "ASC");
   const dividends = listDividends(fundId, accountId, "ASC");
+  const trades = markPositionStages(rawTrades, dividends);
   const position = calculatePositionFromTrades(trades, dividends);
   const buys = trades.filter((trade) => trade.type === "buy");
   const sells = trades.filter((trade) => trade.type === "sell");
@@ -326,9 +328,9 @@ function buildCashFlowsForXirr(asset: { trades?: TradeRecord[]; dividends?: Divi
     flows.push({ date: trade.date, amount: trade.type === "buy" ? -amount : amount });
   });
   (asset.dividends || []).forEach((dividend) => {
-    if (dividend.type !== "cash") return;
+    if (dividend.type !== "cash" && dividend.type !== "dividend_tax") return;
     const amount = Number(dividend.amount);
-    if (Number.isFinite(amount) && amount > 0) flows.push({ date: dividend.date, amount });
+    if (Number.isFinite(amount) && amount > 0) flows.push({ date: dividend.date, amount: dividend.type === "dividend_tax" ? -amount : amount });
   });
   if (marketValue > 0) flows.push({ date: new Date().toISOString().slice(0, 10), amount: marketValue });
   return flows;

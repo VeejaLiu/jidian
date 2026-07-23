@@ -265,7 +265,9 @@ export async function fetchStockPriceHistory(code: string, startDate: string, en
   const url = new URL("https://push2his.eastmoney.com/api/qt/stock/kline/get");
   url.searchParams.set("secid", secid);
   url.searchParams.set("klt", "101");
-  url.searchParams.set("fqt", "1");
+  // Holdings and transactions use the broker's actual share count and price.
+  // Keep market data unadjusted so corporate actions are applied exactly once.
+  url.searchParams.set("fqt", "0");
   url.searchParams.set("lmt", "100000");
   url.searchParams.set("end", parseEastmoneyDateInput(endDate, "20500101"));
   url.searchParams.set("beg", parseEastmoneyDateInput(startDate, "19900101"));

@@ -1,6 +1,7 @@
 import { useCallback, type FormEvent } from "react";
 import { api } from "../api/client";
-import type { Fund, TradeRecord } from "../types/fund";
+import type { DividendRecord, Fund, TradeRecord } from "../types/fund";
+import type { DividendDraft } from "../components/trade/EditDividendModal";
 import { formatMoney, formatShares, tradeTypeLabel } from "../utils/format";
 import type { useTradeForm } from "./useTradeForm";
 
@@ -84,9 +85,9 @@ export function useTradeActions({
           accountId: selectedAccountId,
           type: tradeForm.dividendType,
           date: tradeForm.dividendDate,
-          amount: tradeForm.dividendAmount,
+          amount: ["stock_bonus", "capital_increase"].includes(tradeForm.dividendType) ? undefined : tradeForm.dividendAmount,
           nav: tradeForm.dividendType === "reinvest" ? tradeForm.dividendNav : undefined,
-          shares: tradeForm.dividendType === "reinvest" ? tradeForm.dividendShares : undefined,
+          shares: ["reinvest", "stock_bonus", "capital_increase"].includes(tradeForm.dividendType) ? tradeForm.dividendShares : undefined,
           note: tradeForm.dividendNote.trim(),
         }),
       });
@@ -98,6 +99,23 @@ export function useTradeActions({
   const handleEditTrade = useCallback((record: TradeRecord) => {
     tradeForm.openEditTrade(record);
   }, [tradeForm]);
+
+  const handleUpdateDividend = useCallback((record: DividendRecord, draft: DividendDraft) => {
+    runWithBusy("保存记录中...", async () => {
+      await api(`/api/dividends/${record.id}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          type: draft.type,
+          date: draft.date,
+          amount: ["stock_bonus", "capital_increase"].includes(draft.type) ? undefined : draft.amount,
+          nav: draft.type === "reinvest" ? draft.nav : undefined,
+          shares: ["reinvest", "stock_bonus", "capital_increase"].includes(draft.type) ? draft.shares : undefined,
+          note: draft.note.trim(),
+        }),
+      });
+      await refreshSelectedFund();
+    });
+  }, [refreshSelectedFund, runWithBusy]);
 
   const handleCloseEditTrade = useCallback(() => {
     if (busyActive) return;
@@ -146,6 +164,7 @@ export function useTradeActions({
   return {
     handleSubmitTrade,
     handleSubmitDividend,
+    handleUpdateDividend,
     handleEditTrade,
     handleCloseEditTrade,
     handleSubmitEditTrade,

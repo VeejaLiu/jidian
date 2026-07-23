@@ -1,7 +1,7 @@
-import type { FormEvent } from "react";
-import type { ChartData, DividendType, Fund, TradeRecord, TradeType } from "../../types/fund";
-import { DividendForm } from "./DividendForm";
-import { TradeForm } from "./TradeForm";
+import { useState, type FormEvent } from "react";
+import type { ChartData, DividendRecord, DividendType, Fund, TradeRecord, TradeType } from "../../types/fund";
+import { AddRecordModal } from "./AddRecordModal";
+import type { DividendDraft } from "./EditDividendModal";
 import { TradeHistory } from "./TradeHistory";
 
 interface TradeSectionProps {
@@ -38,6 +38,7 @@ interface TradeSectionProps {
   onDividendSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onEditTrade: (record: TradeRecord) => void;
   onDeleteTrade: (record: TradeRecord) => void;
+  onUpdateDividend: (record: DividendRecord, draft: DividendDraft) => void;
 }
 
 export function TradeSection({
@@ -74,49 +75,47 @@ export function TradeSection({
   onDividendSubmit,
   onEditTrade,
   onDeleteTrade,
+  onUpdateDividend,
 }: TradeSectionProps) {
+  const [addModalOpen, setAddModalOpen] = useState(false);
+
   return (
     <section className="buy-grid">
-      <div className="trade-form-stack">
-        <TradeForm
-          busy={busy}
-          isStock={fund.assetType === "stock"}
-          availableShares={fund.position?.totalShares}
-          navPoints={chartData.nav}
-          tradeType={tradeType}
-          tradeDate={tradeDate}
-          tradeAmount={tradeAmount}
-          tradePrice={tradePrice}
-          tradeShares={tradeShares}
-          tradeFee={tradeFee}
-          tradeNote={tradeNote}
-          onTypeChange={onTypeChange}
-          onDateChange={onDateChange}
-          onAmountChange={onAmountChange}
-          onPriceChange={onPriceChange}
-          onSharesChange={onSharesChange}
-          onFeeChange={onFeeChange}
-          onNoteChange={onNoteChange}
-          onSubmit={onSubmit}
-        />
-        <DividendForm
-          busy={busy}
-          type={dividendType}
-          date={dividendDate}
-          amount={dividendAmount}
-          nav={dividendNav}
-          shares={dividendShares}
-          note={dividendNote}
-          onTypeChange={onDividendTypeChange}
-          onDateChange={onDividendDateChange}
-          onAmountChange={onDividendAmountChange}
-          onNavChange={onDividendNavChange}
-          onSharesChange={onDividendSharesChange}
-          onNoteChange={onDividendNoteChange}
-          onSubmit={onDividendSubmit}
-        />
-      </div>
-      <TradeHistory fund={fund} onEditTrade={onEditTrade} onDeleteTrade={onDeleteTrade} />
+      <TradeHistory fund={fund} busy={busy} onAddRecord={() => setAddModalOpen(true)} onEditTrade={onEditTrade} onDeleteTrade={onDeleteTrade} onUpdateDividend={onUpdateDividend} />
+      {addModalOpen && <AddRecordModal
+        fund={fund}
+        navPoints={chartData.nav}
+        busy={busy}
+        tradeType={tradeType}
+        tradeDate={tradeDate}
+        tradeAmount={tradeAmount}
+        tradePrice={tradePrice}
+        tradeShares={tradeShares}
+        tradeFee={tradeFee}
+        tradeNote={tradeNote}
+        dividendType={dividendType}
+        dividendDate={dividendDate}
+        dividendAmount={dividendAmount}
+        dividendNav={dividendNav}
+        dividendShares={dividendShares}
+        dividendNote={dividendNote}
+        onTypeChange={onTypeChange}
+        onDateChange={onDateChange}
+        onAmountChange={onAmountChange}
+        onPriceChange={onPriceChange}
+        onSharesChange={onSharesChange}
+        onFeeChange={onFeeChange}
+        onNoteChange={onNoteChange}
+        onSubmit={onSubmit}
+        onDividendTypeChange={onDividendTypeChange}
+        onDividendDateChange={onDividendDateChange}
+        onDividendAmountChange={onDividendAmountChange}
+        onDividendNavChange={onDividendNavChange}
+        onDividendSharesChange={onDividendSharesChange}
+        onDividendNoteChange={onDividendNoteChange}
+        onDividendSubmit={onDividendSubmit}
+        onClose={() => setAddModalOpen(false)}
+      />}
     </section>
   );
 }

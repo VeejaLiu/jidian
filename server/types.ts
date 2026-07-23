@@ -1,5 +1,6 @@
 export type TradeType = "buy" | "sell";
 export type AssetType = "fund" | "stock";
+export type PositionStage = "opening" | "closing";
 
 export interface TradeRecord {
   id?: number;
@@ -11,6 +12,7 @@ export interface TradeRecord {
   shares: number | null;
   status?: "pending" | "confirmed";
   note?: string | null;
+  positionStage?: PositionStage | null;
 }
 
 export interface ImportedTradeRow {
@@ -25,7 +27,7 @@ export interface ImportedTradeRow {
   note?: string | null;
 }
 
-export type DividendType = "cash" | "reinvest";
+export type DividendType = "cash" | "reinvest" | "stock_bonus" | "capital_increase" | "dividend_tax";
 
 export interface DividendRecord {
   id?: number;
@@ -33,7 +35,7 @@ export interface DividendRecord {
   fundId?: number;
   type: DividendType;
   date: string;
-  amount: number;
+  amount: number | null;
   nav?: number | null;
   shares?: number | null;
   note?: string | null;

@@ -3,8 +3,9 @@ import { db } from "../db/database";
 import { getFundById, mapFund } from "../services/funds";
 import { importTradesFromText } from "../services/imports";
 import { assertTradeTimeline, buildTradeInput } from "../services/trades";
-import { createDividend } from "../services/dividends";
+import { createDividend, deleteDividend, updateDividend } from "../services/dividends";
 import { getAccountIdFromRequest } from "../services/accounts";
+import { toHttpError } from "../utils/httpError";
 
 export const tradeRoutes = Router();
 
@@ -60,8 +61,41 @@ tradeRoutes.post("/api/funds/:id/dividends", (req, res, next) => {
   try {
     const fundId = Number(req.params.id);
     const accountId = getAccountIdFromRequest(req);
+    const asset = db.prepare("SELECT asset_type FROM funds WHERE id = ?").get(fundId) as { asset_type?: string } | undefined;
+    if (!asset) throw toHttpError("资产不存在", 404);
+    if (["stock_bonus", "capital_increase", "dividend_tax"].includes(String(req.body?.type)) && asset.asset_type !== "stock") {
+      throw toHttpError("送股、转增股本和股息红利个人所得税仅适用于股票", 400);
+    }
     createDividend(fundId, accountId, req.body);
     res.status(201).json({ fund: mapFund(getFundById(fundId, { accountId, includeHidden: true }), accountId) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+tradeRoutes.put("/api/dividends/:id", (req, res, next) => {
+  try {
+    const accountId = getAccountIdFromRequest(req);
+    const current = db
+      .prepare("SELECT fund_id AS fundId FROM dividend_records WHERE id = ? AND account_id = ?")
+      .get(Number(req.params.id), accountId) as { fundId: number } | undefined;
+    if (!current) throw toHttpError("分红或公司行为记录不存在", 404);
+    const asset = db.prepare("SELECT asset_type FROM funds WHERE id = ?").get(current.fundId) as { asset_type?: string } | undefined;
+    if (["stock_bonus", "capital_increase", "dividend_tax"].includes(String(req.body?.type)) && asset?.asset_type !== "stock") {
+      throw toHttpError("送股、转增股本和股息红利个人所得税仅适用于股票", 400);
+    }
+    const updated = updateDividend(Number(req.params.id), accountId, req.body);
+    res.json({ fund: mapFund(getFundById(updated.fundId, { accountId, includeHidden: true }), accountId) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+tradeRoutes.delete("/api/dividends/:id", (req, res, next) => {
+  try {
+    const accountId = getAccountIdFromRequest(req);
+    deleteDividend(Number(req.params.id), accountId);
+    res.json({ ok: true });
   } catch (error) {
     next(error);
   }

@@ -1,9 +1,11 @@
 import type { FormEvent } from "react";
 import { DatePicker } from "../DatePicker";
 import type { DividendType } from "../../types/fund";
+import { ActionTypePicker } from "./ActionTypePicker";
 
 interface DividendFormProps {
   busy: boolean;
+  isStock: boolean;
   type: DividendType;
   date: string;
   amount: string;
@@ -21,6 +23,7 @@ interface DividendFormProps {
 
 export function DividendForm({
   busy,
+  isStock,
   type,
   date,
   amount,
@@ -42,25 +45,35 @@ export function DividendForm({
   const hasNav = Number.isFinite(navNumber) && navNumber > 0;
   const hasShares = Number.isFinite(sharesNumber) && sharesNumber > 0;
   const estimatedShares = type === "reinvest" && hasAmount && hasNav ? amountNumber / navNumber : null;
+  const isStockBonus = type === "stock_bonus";
+  const isCapitalIncrease = type === "capital_increase";
+  const isShareIncrease = isStockBonus || isCapitalIncrease;
+  const isTax = type === "dividend_tax";
+  const isReinvest = type === "reinvest";
+  const title = isStock ? "分红与公司行为" : "添加分红";
+  const actionOptions: Array<{ value: DividendType; label: string }> = [
+    { value: "cash", label: "现金分红" },
+    { value: "reinvest", label: "红利再投" },
+    ...(isStock
+      ? [
+          { value: "stock_bonus" as const, label: "送股" },
+          { value: "capital_increase" as const, label: "转增股本" },
+          { value: "dividend_tax" as const, label: "股息税" },
+        ]
+      : []),
+  ];
 
   return (
     <form className="data-form trade-entry-form dividend-entry-form" noValidate onSubmit={onSubmit}>
-      <h3>添加分红</h3>
-      <div className={`trade-type-switch trade-type-switch-animated ${type === "cash" ? "is-cash" : "is-reinvest"}`} aria-label="分红类型">
-        <button className={type === "cash" ? "active" : ""} type="button" disabled={busy} onClick={() => onTypeChange("cash")}>
-          现金分红
-        </button>
-        <button className={type === "reinvest" ? "active" : ""} type="button" disabled={busy} onClick={() => onTypeChange("reinvest")}>
-          红利再投
-        </button>
-      </div>
-      <div className="form-row compact">
+      <h3>{title}</h3>
+      <ActionTypePicker value={type} options={actionOptions} disabled={busy} onChange={onTypeChange} />
+      <div className="form-row compact dividend-action-row">
         <label>
           <span>日期</span>
           <DatePicker value={date} disabled={busy} onChange={onDateChange} />
         </label>
       </div>
-      {type === "reinvest" ? (
+      {isReinvest ? (
         <div className="dividend-entry-layout">
           <div className="form-row dividend-core-row">
             <label>
@@ -90,10 +103,17 @@ export function DividendForm({
             </div>
           </div>
         </div>
+      ) : isShareIncrease ? (
+        <div className="form-row compact">
+          <label>
+            <span>{isCapitalIncrease ? "转增股数" : "送股数量"}</span>
+            <input type="number" min="0" step="1" value={shares} disabled={busy} required placeholder="例如：40" onChange={(event) => onSharesChange(event.target.value)} />
+          </label>
+        </div>
       ) : (
         <div className="form-row compact">
           <label>
-            <span>分红金额</span>
+            <span>{isTax ? "扣税金额" : "分红金额"}</span>
             <input type="number" min="0" step="0.01" value={amount} disabled={busy} required placeholder="例如：88.80" onChange={(event) => onAmountChange(event.target.value)} />
           </label>
         </div>
@@ -107,7 +127,7 @@ export function DividendForm({
           <strong>现金分红会直接计入已实现收益</strong>
           <span>{hasAmount ? `本次记录分红金额 ${amountNumber.toFixed(2)}。` : "填写分红金额后即可保存。"}</span>
         </div>
-      ) : (
+      ) : isReinvest ? (
         <div className="dividend-feedback">
           <strong>红利再投会增加持有份额</strong>
           <span>
@@ -118,9 +138,19 @@ export function DividendForm({
                 : "你可以直接填写再投份额，也可以用金额和净值辅助核对。"}
           </span>
         </div>
+      ) : isShareIncrease ? (
+        <div className="dividend-feedback">
+          <strong>{isCapitalIncrease ? "转增股本会增加持有股数" : "送股会增加持有股数"}</strong>
+          <span>{hasShares ? `本次${isCapitalIncrease ? "转增" : "送股"} ${sharesNumber.toFixed(0)} 股，不增加持有成本。` : `填写实际到账的${isCapitalIncrease ? "转增股数" : "送股数量"}。`}</span>
+        </div>
+      ) : (
+        <div className="dividend-feedback">
+          <strong>税款会抵减分红收益</strong>
+          <span>{hasAmount ? `本次扣缴个人所得税 ${amountNumber.toFixed(2)}。` : "填写股票账户中的实际扣税金额。"}</span>
+        </div>
       )}
       <button type="submit" disabled={busy}>
-        保存分红
+        保存记录
       </button>
     </form>
   );

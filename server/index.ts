@@ -1,7 +1,7 @@
 import express from "express";
 import { DB_PATH, IS_DEV, PORT } from "./config/paths";
 import "./db/database";
-import { migrateAccounts, migrateAssetTypes, migrateDividendRecords, migrateStockPriceFields, migrateTradeAmountNullable, migrateTradeFees, migrateTradeRecordsForPendingStatus } from "./db/migrations";
+import { migrateAccounts, migrateAssetTypes, migrateDividendRecords, migrateDividendRecordTypes, migrateStockPriceFields, migrateStocksToUnadjustedPrices, migrateTradeAmountNullable, migrateTradeFees, migrateTradeRecordsForPendingStatus } from "./db/migrations";
 import { setupFrontend } from "./frontend";
 import { accountRoutes } from "./routes/accountRoutes";
 import { fundRoutes } from "./routes/fundRoutes";
@@ -24,7 +24,9 @@ migrateTradeRecordsForPendingStatus();
 migrateTradeFees();
 migrateTradeAmountNullable();
 migrateStockPriceFields();
+migrateStocksToUnadjustedPrices();
 migrateDividendRecords();
+migrateDividendRecordTypes();
 
 app.use(accountRoutes);
 app.use(fundRoutes);

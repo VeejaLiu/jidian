@@ -44,6 +44,12 @@ export function useTradeForm(assetType?: AssetType | null) {
   const isStock = assetType === "stock";
 
   useEffect(() => {
+    if (!isStock && ["stock_bonus", "capital_increase", "dividend_tax"].includes(dividendType)) {
+      setDividendType("cash");
+    }
+  }, [dividendType, isStock]);
+
+  useEffect(() => {
     if (!isStock) return;
     setTradeAmount(calculateStockAmount(tradeType, tradePrice, tradeShares, tradeFee));
   }, [isStock, tradeFee, tradePrice, tradeShares, tradeType]);

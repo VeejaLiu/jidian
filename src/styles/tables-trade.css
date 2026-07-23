@@ -140,6 +140,105 @@
   color: var(--trade-buy);
 }
 
+.action-type-picker {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+.action-type-picker legend {
+  padding: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.action-type-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.action-type-options label {
+  display: flex;
+  min-width: 0;
+  min-height: 38px;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(94, 120, 128, 0.2);
+  border-radius: 10px;
+  padding: 0 10px;
+  background: #ffffff;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 750;
+  line-height: 1.2;
+}
+
+.action-type-options label:hover {
+  border-color: rgba(25, 123, 117, 0.45);
+}
+
+.action-type-options label.active {
+  border-color: rgba(25, 123, 117, 0.42);
+  background: #f1faf8;
+  color: var(--trade-buy);
+}
+
+.action-type-options input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.action-type-indicator {
+  display: grid;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+}
+
+.action-type-options input:checked + .action-type-indicator::after {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  content: "";
+}
+
+.action-type-options input:focus-visible + .action-type-indicator {
+  outline: 2px solid rgba(25, 123, 117, 0.45);
+  outline-offset: 2px;
+}
+
+.action-type-picker:disabled .action-type-options label {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.action-type-options label > span:last-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 390px) {
+  .action-type-options {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .trade-entry-form .trade-type-switch-animated:hover::before {
   box-shadow:
     0 12px 26px rgba(29, 45, 53, 0.14),
@@ -547,6 +646,33 @@ tr:last-child td {
 .trade-badge.sell {
   background: var(--trade-sell-soft);
   color: var(--trade-sell);
+}
+
+.trade-type-cell {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-items: center;
+}
+
+.position-stage-tag {
+  display: inline-grid;
+  place-items: center;
+  min-height: 22px;
+  border-radius: 999px;
+  padding: 0 7px;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.position-stage-tag.opening {
+  background: #eef7f5;
+  color: var(--primary-dark);
+}
+
+.position-stage-tag.closing {
+  background: #fff3ea;
+  color: #a95116;
 }
 
 .trade-status {
