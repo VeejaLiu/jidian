@@ -48,7 +48,7 @@ A local-first portfolio tracker for Chinese mutual funds and A-shares, with mult
 在下载目录校验文件：
 
 ```bash
-shasum -a 256 -c SHA256SUMS.txt
+shasum -a 256 -c SHA256SUMS.txt --ignore-missing
 ```
 
 目前正式二进制发布面向 macOS。Windows 和 Linux 用户可以尝试从源码运行；本版本未提供这两个平台的安装包。
