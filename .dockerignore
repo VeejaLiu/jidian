@@ -3,7 +3,6 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-package-lock.json
 
 # 构建输出
 dist/
@@ -18,10 +17,22 @@ data/*
 *.db
 *.db-shm
 *.db-wal
+*.sqlite3*
+jidian-backup-*.json
+backups/
+exports/
+release/
+output/
 
 # 环境变量
 .env
 .env.*
+.npmrc
+.netrc
+*.pem
+*.key
+*.p12
+*.pfx
 
 # 日志文件
 *.log

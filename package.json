@@ -15,13 +15,29 @@
     "desktop:build:x64": "node electron/build-desktop.js --mac zip dmg --x64",
     "desktop:build:dir:x64": "node electron/build-desktop.js --dir --x64",
     "typecheck": "tsc --noEmit",
-    "test": "node --import tsx --test tests/*.test.ts",
+    "test": "node scripts/test.mjs",
+    "check:public": "node scripts/check-public-files.mjs",
     "check": "npm run typecheck && vite build"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "portfolio",
+    "fund",
+    "stock",
+    "dca",
+    "electron",
+    "local-first"
+  ],
+  "author": "Veeja Liu",
   "license": "ISC",
-  "description": "基点是一个本地运行的基金与股票投资记录工具，支持历史价格同步、交易管理与持仓分析。",
+  "description": "基点 Jidian — 本地优先的基金与 A 股投资记录工具，支持多账户、持仓收益分析、分红管理与定投辅助。",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VeejaLiu/jidian.git"
+  },
+  "homepage": "https://github.com/VeejaLiu/jidian#readme",
+  "bugs": {
+    "url": "https://github.com/VeejaLiu/jidian/issues"
+  },
   "engines": {
     "node": ">=24.0.0"
   },
@@ -46,7 +62,7 @@
     "@vitejs/plugin-react": "^6.0.2",
     "concurrently": "^9.2.1",
     "cross-env": "^10.1.0",
-    "electron": "^37.2.0",
+    "electron": "^44.8.0",
     "electron-builder": "^26.0.12",
     "tsx": "^4.22.4",
     "typescript": "^6.0.3",

@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm audit --omit=dev --audit-level=moderate
+      - run: npm run check:public
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm run build:server
+      - name: Scan complete Git history for secrets
+        env:
+          GITLEAKS_VERSION: 8.30.1
+        run: |
+          set -euo pipefail
+          scanner_dir="$(mktemp -d)"
+          trap 'rm -rf "$scanner_dir"' EXIT
+          archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          base="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}"
+          curl --fail --silent --show-error --location "$base/$archive" -o "$scanner_dir/$archive"
+          curl --fail --silent --show-error --location "$base/gitleaks_${GITLEAKS_VERSION}_checksums.txt" -o "$scanner_dir/checksums.txt"
+          (cd "$scanner_dir" && sha256sum --check --ignore-missing checksums.txt)
+          tar -xzf "$scanner_dir/$archive" -C "$scanner_dir" gitleaks
+          "$scanner_dir/gitleaks" git --log-opts="--all" --redact --no-banner .

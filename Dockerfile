@@ -25,6 +25,7 @@ EXPOSE 4173
 # 设置环境变量
 ENV NODE_ENV=production
 ENV PORT=4173
+ENV APP_HOST=0.0.0.0
 
 # 启动应用
 CMD ["npm", "run", "serve"]

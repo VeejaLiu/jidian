@@ -11,7 +11,8 @@ function isIgnored(source) {
   const relativePath = path.relative(projectRoot, source);
   const firstSegment = relativePath.split(path.sep)[0];
 
-  return [".git", "node_modules", "dist", "release", "data"].includes(firstSegment)
+  return [".git", ".idea", ".vscode", ".playwright-cli", "node_modules", "dist", "release", "data", "backups", "exports", "output", "coverage"].includes(firstSegment)
+    || /(^|\/)(?:\.env(?:\..*)?|\.npmrc|\.netrc)$|\.(?:sqlite(?:3)?(?:-wal|-shm)?|db(?:-wal|-shm)?|pem|key|p12|pfx|log)$|(^|\/)jidian-backup-.*\.json$/i.test(relativePath)
     || relativePath === path.join("build", "server")
     || relativePath.startsWith(`${path.join("build", "server")}${path.sep}`)
     || relativePath === ".DS_Store";

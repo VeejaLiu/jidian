@@ -1,5 +1,5 @@
 import express from "express";
-import { DB_PATH, IS_DEV, PORT } from "./config/paths";
+import { DB_PATH, HOST, IS_DEV, PORT } from "./config/paths";
 import "./db/database";
 import { migrateAccounts, migrateAssetTypes, migrateDividendRecords, migrateDividendRecordTypes, migrateStockPriceFields, migrateStocksToUnadjustedPrices, migrateTradeAmountNullable, migrateTradeFees, migrateTradeRecordsForPendingStatus } from "./db/migrations";
 import { setupFrontend } from "./frontend";
@@ -49,8 +49,8 @@ async function startServer() {
   await setupFrontend(app);
   setupErrorHandler();
 
-  app.listen(PORT, () => {
-    logInfo(`基点已启动 url=http://127.0.0.1:${PORT}`);
+  app.listen(PORT, HOST, () => {
+    logInfo(`基点已启动 url=http://${HOST}:${PORT}`);
     logInfo(`运行模式 mode=${IS_DEV ? "development" : "production"}`);
     logInfo(`SQLite 数据库 path=${DB_PATH}`);
     startBackgroundSyncScheduler();

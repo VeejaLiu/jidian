@@ -1,241 +1,144 @@
-# 基点
+# 基点 · Jidian
 
-基点是一个本地运行的基金定投管理工具，用来记录基金、历史净值和买入/卖出交易，并根据 4% 定投法计算下一次买入触发条件。
+**把每一次交易记清楚，让持仓与收益一目了然。**
 
-项目是一个单体应用：前端使用 React + TypeScript，后端使用 Express + TypeScript，数据保存在本地 SQLite 文件中。
+基点是一款本地优先的基金与 A 股投资记录工具，将多账户资产、交易、分红与历史行情放在同一个工作台中，并提供可配置的跌幅定投参考。无需注册，投资记录保存在自己的设备上。
 
-桌面版基于 Electron，采用“Electron 窗口 + 本地 Express 服务 + SQLite”结构。
+A local-first portfolio tracker for Chinese mutual funds and A-shares, with multi-account records, dividend tracking, charts, and DCA triggers.
 
-## 应用截图
+[![Release](https://img.shields.io/github/v/release/VeejaLiu/jidian?label=release)](https://github.com/VeejaLiu/jidian/releases/latest)
+[![CI](https://github.com/VeejaLiu/jidian/actions/workflows/ci.yml/badge.svg)](https://github.com/VeejaLiu/jidian/actions/workflows/ci.yml)
+[![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](LICENSE)
 
-![基点应用截图](doc/001.png)
+[下载桌面版](https://github.com/VeejaLiu/jidian/releases/latest) · [更新记录](CHANGELOG.md) · [反馈问题](https://github.com/VeejaLiu/jidian/issues) · [开发与打包](docs/DEVELOPMENT.md)
+
+![基点工作台：所有账户、资产、行情与交易均为虚构演示数据](docs/images/overview.png)
+
+> 截图使用独立的演示数据库，账户、资产、价格和交易均为虚构数据。安装包不包含演示记录或个人投资数据。
 
 ## 功能
 
-- 按基金代码添加基金，并自动同步历史净值。
-- 保存买入和卖出交易记录。
-- 当交易日期的净值尚未公布时，交易会先进入“待确认”，后续同步到净值后自动确认。
-- 计算当前持仓、成本价、触发买入净值和还需要下跌的比例。
-- 在净值走势图中展示买入点、卖出点和成本价参考线。
-- 支持隐藏已清仓或暂时不关注的基金，交易和净值数据不会被删除。
-- 数据默认自动保存在本地 SQLite 数据库。
-- 支持一键导出 / 导入整库备份，包含账户、持有资产（含隐藏资产）、交易历史和价格历史。
+| 功能 | 说明 |
+| --- | --- |
+| 多账户 | 分别管理账户与资产，汇总市值、持仓成本、累计收益及 XIRR 年化收益率 |
+| 基金与 A 股 | 按代码添加资产，同步基金历史净值与沪深 A 股历史价格 |
+| 交易记录 | 记录买入、卖出和手续费；基金净值尚未公布时先保存为待确认交易 |
+| 分红与公司行为 | 现金分红、红利再投、送股、转增股本和股息红利税 |
+| 图表分析 | 净值曲线、股票 K 线、买卖点与成本参考线 |
+| 定投辅助 | 默认按上次买入净值下跌 4% 计算触发位置，可按账户中的基金调整阈值 |
+| 批量导入 | 粘贴表格中的成交记录，支持中文表头 |
+| 本地备份 | 导出、预览并导入整库 JSON 备份，包含账户、隐藏资产、交易和价格历史 |
 
-## 本地运行
+隐藏资产会保留原有记录，可以随时恢复。自动行情同步依赖公开数据源，可能存在延迟或临时不可用。
 
-安装依赖：
+## 下载与安装
+
+前往 **[最新正式版本](https://github.com/VeejaLiu/jidian/releases/latest)**，下载 macOS 安装包。需要 **macOS 13（Ventura）或更新版本**：
+
+| 文件 | 用途 |
+| --- | --- |
+| `jidian-1.0.0-macos-universal.dmg` | 推荐；同时支持 Apple Silicon（M 系列）和 Intel Mac |
+| `jidian-1.0.0-macos-universal.zip` | 相同应用的 ZIP 压缩包 |
+| `SHA256SUMS.txt` | 校验下载文件是否完整 |
+
+打开 DMG，将「基点」拖入「应用程序」，然后启动。桌面版自带运行环境，无需安装 Node.js。
+
+**v1.0.0 未使用 Apple Developer ID 签名，也未提交 Apple 公证。** macOS 可能拦截首次打开；确认文件来自本仓库并核对校验值后，可在「系统设置 → 隐私与安全性」中按系统提示允许打开。请以 Release 页面标明的签名状态为准。
+
+在下载目录校验文件：
 
 ```bash
-npm install
+shasum -a 256 -c SHA256SUMS.txt
 ```
 
-建议 Node 版本：
+目前正式二进制发布面向 macOS。Windows 和 Linux 用户可以尝试从源码运行；本版本未提供这两个平台的安装包。
 
-```bash
-node >= 24
-```
+## 开始使用
 
-启动应用：
+1. 创建或选择账户，添加基金或股票。
+2. 录入历史交易，也可以从「批量导入」粘贴成交表格。
+3. 同步行情，查看持仓、收益、历史图表与定投触发位置。
+4. 定期在账户管理中导出备份；迁移设备时先预览备份，再确认导入。
 
-```bash
-npm run dev
-```
+整库导入会替换当前数据库中的记录，并在本地备份目录保留导入前快照。操作前仍建议单独导出并妥善保存备份。
 
-启动后打开：
+### 跌幅触发如何计算
 
 ```text
-http://127.0.0.1:4173/
+下一次触发净值 = 上次买入净值 ×（1 − 跌幅阈值）
 ```
 
-## 常用命令
+例如，上次买入净值为 `1.0000`，阈值为 `4%`，触发净值就是 `0.9600`。这是记录与计算功能，不会自动下单。
+
+## 从源码运行
+
+需要 **Node.js 24**，推荐使用 [.nvmrc](.nvmrc) 中的版本。
 
 ```bash
+git clone https://github.com/VeejaLiu/jidian.git
+cd jidian
+npm ci
 npm run dev
-npm run desktop:dev
-npm run typecheck
+```
+
+打开 <http://127.0.0.1:4173/>。前端页面和 API 由同一个本地服务提供。
+
+构建后运行：
+
+```bash
 npm run build
-npm run start
-npm run desktop:build
+npm run serve
 ```
 
-## 桌面版
-
-桌面开发模式：
+也可使用 Docker：
 
 ```bash
-npm run desktop:dev
+docker compose up --build -d
 ```
 
-开发模式会同时启动后端服务 `http://127.0.0.1:4173`、Vite 前端 `http://127.0.0.1:5173` 和 Electron 窗口。Electron 和浏览器打开 `http://127.0.0.1:5173` 时都会访问同一个开发后端，因此备份导入等 `/api` 请求不需要手动改端口。
+Docker 默认只向本机发布 `4173` 端口，并将数据库保存在仓库的 `data/` 目录。
 
-这个命令会启动：
+## 数据与隐私
 
-- Vite 前端开发服务器
-- Electron 桌面窗口
-- Electron 内部拉起的本地 Express 服务
+- **投资记录保存在本地 SQLite 文件中**，应用不要求登录，也不主动上传交易记录或整库备份。
+- 行情同步会向东方财富、腾讯等公开行情服务发送资产代码和查询日期等请求；这些服务可以看到请求的网络信息。
+- 服务默认只监听 `127.0.0.1`。本地 API 没有登录认证，请在个人可信设备上使用，不要直接暴露到公网。
+- 数据库、JSON 备份和日志未由本应用加密，请自行管理设备权限和备份存储。反馈问题时请使用虚构数据。
 
-桌面版内置服务不会固定占用 `4173`，而是每次启动时自动选择一个本机空闲端口，避免和 `npm run dev` 冲突。
+| 运行方式 | 默认数据库位置 |
+| --- | --- |
+| 源码运行 / 桌面开发 | `data/fund-dca.sqlite` |
+| macOS 已安装桌面版 | `~/Library/Application Support/jidian/fund-dca.sqlite` |
 
-macOS 打包：
+桌面版日志位于 `~/Library/Application Support/jidian/logs/`；自动快照位于相应数据目录的 `backups/`。卸载或迁移应用前，请先导出备份。
 
-```bash
-npm run desktop:build
-```
+数据库、备份、环境变量和签名证书不属于开源仓库或安装包。CI 会检查常见私有文件和提交历史中的密钥；截图仍需人工核查。
 
-这个命令默认生成 Apple Silicon `arm64` 安装包。
+## 开发
 
-如果当前机器是 Intel Mac，请改用 `x64`：
-
-```bash
-npm run desktop:build:x64
-```
-
-如果要额外生成通用包：
-
-```bash
-npm run desktop:build:universal
-```
-
-这个命令会先构建：
-
-- 前端静态资源 `dist/`
-- 桌面版内置服务端 JS 产物 `build/server/`
-- 在独立临时目录中安装依赖并为 Electron 编译原生模块，成品输出到 `release/`
-
-桌面构建不会修改项目本地的 `node_modules`。因此，无论构建成功、失败或中途取消，`npm run dev` 都始终使用本地 Node 版本对应的 `better-sqlite3`，不会再被桌面打包覆盖。
-
-仅输出目录结构，便于检查打包内容：
-
-```bash
-npm run desktop:build:dir
-```
-
-Intel Mac 对应的目录输出命令：
-
-```bash
-npm run desktop:build:dir:x64
-```
-
-### 桌面打包与 better-sqlite3 ABI
-
-`better-sqlite3` 是原生模块，桌面包最容易出问题的地方就是它的 ABI 和 Electron 运行时不匹配。
-
-桌面版和网页开发使用不同的 Node 运行时 ABI。构建脚本会自动将它们隔离，以下规则仍需遵守：
-
-- 打包 Electron 桌面版时，必须使用仓库要求的 Node 版本，当前以 `.nvmrc` 为准。
-- Intel Mac 不要使用默认的 `arm64` 打包命令，否则安装包内的原生模块架构会不对。
-- 不要直接在项目根目录运行 `electron-builder` 或 `electron-rebuild`；请使用 `npm run desktop:build*` 命令，以保持开发依赖不受影响。
-- 不能只检查 `app.asar.unpacked/node_modules/better-sqlite3/...`，还要确认 `app.asar` 内没有残留旧版本的 `better_sqlite3.node`。如果 `app.asar` 里还带着旧 ABI 的二进制，Electron 仍然可能把它解压到临时目录后加载，表现为：
+前端使用 React、TypeScript、Vite 与 ECharts；后端使用 Express 与 better-sqlite3；桌面端由 Electron 承载本地服务。
 
 ```text
-The module '/var/folders/.../.org.chromium.Chromium.*'
-was compiled against a different Node.js version using NODE_MODULE_VERSION ...
+src/          前端组件、交互与图表
+server/       API、持仓计算、行情同步与数据库迁移
+database/     SQLite 初始化结构
+electron/     桌面入口与隔离构建脚本
+scripts/      测试隔离与公开文件检查
+tests/        交易、策略与备份测试
 ```
-
-推荐的本机打包流程：
 
 ```bash
-. "$HOME/.nvm/nvm.sh"
-nvm use
-npm run desktop:build:x64     # Intel Mac
-# 或
-npm run desktop:build         # Apple Silicon
+npm run typecheck
+npm test
+npm run check:public
+npm run build
+npm run build:server
 ```
 
-如果桌面版安装后出现 `better-sqlite3` 的 `ERR_DLOPEN_FAILED`：
+测试自动使用临时数据库，并在完成后清理。桌面开发、安装包构建和原生模块排错见 [开发说明](docs/DEVELOPMENT.md)。参与贡献前请阅读 [贡献指南](CONTRIBUTING.md)；安全问题请参照 [安全政策](SECURITY.md) 私下报告。
 
-1. 先确认 Electron 运行时 ABI：
+## 许可与说明
 
-```bash
-ELECTRON_RUN_AS_NODE=1 ./node_modules/.bin/electron -p "process.versions.modules + ' ' + process.version"
-```
+本项目采用 [ISC 许可证](LICENSE)。基金净值、股票价格及相关资料的权利归原始数据提供方所有，使用时请遵守相应服务条款。
 
-2. 再确认本地 Node ABI：
-
-```bash
-node -p "process.versions.modules + ' ' + process.version"
-```
-
-3. 如果桌面应用已经安装到 `/Applications/基点.app`，检查它实际加载的是否还是旧 ABI：
-
-```bash
-ELECTRON_RUN_AS_NODE=1 /Applications/基点.app/Contents/MacOS/基点 \
-  -e "const Database=require('/Applications/基点.app/Contents/Resources/app.asar/node_modules/better-sqlite3'); const db=new Database(':memory:'); db.close(); console.log('OK')"
-```
-
-4. 如果这里仍然失败，不要只重编译 `app.asar.unpacked` 里的文件，还要确认 `app.asar` 内的 `node_modules/better-sqlite3/build/Release/better_sqlite3.node` 也已经被替换。
-
-这次我们实际踩到的坑就是：
-
-- `app.asar.unpacked` 里的 `better-sqlite3` 已经修好
-- 但 `app.asar` 里面还残留旧 ABI 的 `better_sqlite3.node`
-- Electron 最终从 `app.asar` 解压旧文件到 `/var/folders/.../.org.chromium.Chromium.*` 后加载，导致桌面版继续报错
-
-因此，桌面包验收时至少要做一次 Electron 运行时自检，而不是只看文件时间戳：
-
-```bash
-ELECTRON_RUN_AS_NODE=1 /Applications/基点.app/Contents/MacOS/基点 \
-  -e "const Database=require('/Applications/基点.app/Contents/Resources/app.asar/node_modules/better-sqlite3'); const db=new Database(':memory:'); db.prepare('select 1').get(); db.close(); console.log('OK')"
-```
-
-### macOS 签名与公证
-
-如果要生成正式签名并提交公证，需要提供这些环境变量：
-
-```bash
-APPLE_ID
-APPLE_APP_SPECIFIC_PASSWORD
-APPLE_TEAM_ID
-```
-
-未提供时，仍可先构建未公证的本地安装包用于开发验证。
-
-## 数据说明
-
-服务端模式下，本地数据文件默认保存在：
-
-```text
-data/fund-dca.sqlite
-```
-
-桌面模式下：
-
-- 开发态 `npm run desktop:dev` 会继续复用仓库下的 `data/fund-dca.sqlite`
-- 打包后的生产态才会切换到 Electron 的用户数据目录
-
-桌面版日志默认保存在：
-
-```text
-~/Library/Application Support/jidian/logs
-```
-
-其中：
-
-- `main.log`：Electron 主进程和桌面启动编排日志
-- `server.log`：内置 Express 服务业务日志
-- `errors.log`：未捕获异常和未处理 Promise 拒绝
-
-这个文件包含个人基金、交易记录、历史净值等数据，不应该提交到 Git，也不应该分享给别人。
-
-项目已经在 `.gitignore` 中忽略 SQLite 数据文件。仓库里只保留 `data/.gitkeep`，用于保留空目录。
-
-别人拿到项目代码后，第一次启动应用时会根据下面的初始化脚本自动创建自己的本地数据库：
-
-```text
-database/schema.sql
-```
-
-## 项目结构
-
-```text
-database/        SQLite 表结构和数据库说明
-server/          Express 后端、接口、数据库迁移和净值同步逻辑
-src/             React 前端代码
-electron/        Electron 主进程、preload 和桌面打包辅助逻辑
-build/           桌面图标和安装包资源目录
-data/            本地 SQLite 数据目录，真实数据不会进入 Git
-```
-
-## 注意
-
-基点只做个人记录、计算和辅助参考，不构成投资建议。基金净值来自公开数据源，实际交易确认金额和份额请以基金平台或销售机构为准。
+基点用于个人投资记录、计算与辅助参考，不提供投资建议。实际成交、确认份额、费用和税款以基金平台或证券机构记录为准。

@@ -195,6 +195,7 @@ async function startEmbeddedServer() {
     ...process.env,
     NODE_ENV: app.isPackaged ? "production" : "development",
     APP_RUNTIME: "desktop",
+    APP_HOST: HOST,
     PORT: String(serverPort),
     APP_ROOT_DIR: rootDir,
     APP_RESOURCE_DIR: resourceRootDir,

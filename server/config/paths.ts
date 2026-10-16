@@ -1,6 +1,7 @@
 import path from "node:path";
 
 export const PORT = Number(process.env.PORT || 4173);
+export const HOST = process.env.APP_HOST || "127.0.0.1";
 export const APP_RUNTIME = process.env.APP_RUNTIME || "server";
 export const IS_DESKTOP = APP_RUNTIME === "desktop";
 export const IS_DEV = process.env.NODE_ENV === "development";

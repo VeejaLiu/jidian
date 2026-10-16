@@ -112,7 +112,7 @@ export function NavChart({ fund, data, loading, busy, onViewAllNav }: NavChartPr
           data: useKLine ? dates : undefined,
           boundaryGap: useKLine,
           axisLine: { lineStyle: { color: "#a7b4bc" } },
-          axisLabel: { color: "#65727e", formatter: formatChartDate },
+          axisLabel: { color: "#65727e", formatter: formatChartDate, hideOverlap: true },
         },
         yAxis: {
           type: "value",

@@ -12,10 +12,22 @@ data/*
 *.db
 *.db-shm
 *.db-wal
+*.sqlite3
+*.sqlite3-shm
+*.sqlite3-wal
+jidian-backup-*.json
+backups/
+exports/
 
 # Local environment and logs
 .env
 .env.*
+.npmrc
+.netrc
+*.pem
+*.key
+*.p12
+*.pfx
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -24,6 +36,9 @@ pnpm-debug.log*
 
 # System files
 .DS_Store
+output/
+.playwright-cli/
+coverage/
 .idea/.gitignore
 .idea/JijinGuanliGongju.iml
 .idea/misc.xml
