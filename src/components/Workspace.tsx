@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { createPortal } from "react-dom";
 import { NavChart } from "./chart/NavChart";
 import { AccountOverview } from "./account/AccountOverview";
 import { FundActionMenu, type FundAction } from "./fund/FundActionMenu";
@@ -126,11 +127,12 @@ export function Workspace({
 
   return (
     <section className="workspace" aria-live="polite">
-      {busy && (
+      {busy && createPortal(
         <div className="workspace-loading" aria-live="polite" aria-busy="true">
           <div className="spinner" aria-hidden="true"></div>
           <strong>{busyLabel}</strong>
-        </div>
+        </div>,
+        document.body,
       )}
 
       {!fund ? (

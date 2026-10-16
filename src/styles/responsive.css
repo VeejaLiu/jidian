@@ -1,61 +1,423 @@
+/* Size grid tracks by the content pane, rather than the full browser window. */
+.app-shell > *,
+.fund-workspace > *,
+.modal-panel > *,
+.form-row > *,
+.manual-price-form > *,
+.account-overview-header > div,
+.table-title > div,
+.modal-header > div {
+  min-width: 0;
+}
 
-@media (max-width: 980px) {
-  .app-shell {
-    grid-template-columns: 1fr;
-  }
+.workspace h2,
+.workspace .eyebrow,
+.fund-header-meta,
+.modal-header,
+.form-help,
+.fund-action-brief,
+.dividend-assist,
+.trade-sell-assist,
+.app-notice {
+  overflow-wrap: anywhere;
+}
 
-  .fund-panel {
-    height: auto;
-    max-height: 44vh;
-  }
+.account-overview-header > span,
+.icon-button,
+.add-record-button {
+  flex-shrink: 0;
+}
 
-  .workspace {
-    height: 56vh;
-  }
+.account-overview-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
 
-  .summary-grid,
-  .input-grid,
-  .tables-grid {
-    grid-template-columns: 1fr 1fr;
-  }
+.metric-card {
+  min-width: 0;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 8px;
+}
 
-  .buy-grid {
-    grid-template-columns: 1fr;
+.metric-card span,
+.metric-card strong {
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.metric-card strong {
+  font-size: clamp(1rem, 1.6vw, 1.38rem);
+  font-variant-numeric: tabular-nums;
+}
+
+.metric-card-pair {
+  flex-wrap: wrap;
+}
+
+.metric-card-group {
+  justify-content: stretch;
+}
+
+.metric-card-pair-subtle strong {
+  font-size: 0.95rem;
+}
+
+.summary-band-grid-primary {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.summary-band-grid-secondary {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.summary-strategy-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.table-title {
+  flex-wrap: wrap;
+}
+
+.range-switcher {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.table-wrap {
+  min-width: 0;
+  max-width: 100%;
+  overscroll-behavior-x: contain;
+}
+
+.buy-history-wrap {
+  height: auto;
+  max-height: 440px;
+  overflow: auto;
+}
+
+.buy-history-wrap th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.buy-history-wrap th:nth-child(10),
+.buy-history-wrap td:nth-child(10) {
+  min-width: 180px;
+  max-width: 280px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  padding-block: 12px;
+}
+
+.buy-history-wrap th:last-child,
+.buy-history-wrap td:last-child {
+  position: sticky;
+  right: 0;
+  z-index: 1;
+  background: var(--surface);
+  box-shadow: -1px 0 var(--line);
+}
+
+.buy-history-wrap th:last-child {
+  z-index: 3;
+  background: var(--surface-strong);
+}
+
+.table-scroll-hint {
+  display: none;
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.modal-backdrop {
+  padding: 24px;
+}
+
+.modal-panel {
+  min-width: 0;
+  min-height: 0;
+  max-width: 100%;
+  max-height: calc(100dvh - 48px);
+  grid-auto-rows: min-content;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.modal-header {
+  flex-direction: row;
+  align-items: flex-start;
+}
+
+.modal-panel h2 {
+  font-size: clamp(1.15rem, 3vw, 1.65rem);
+}
+
+.nav-history-modal {
+  height: min(720px, calc(100dvh - 48px));
+  overflow: hidden;
+}
+
+.modal-table {
+  min-height: 0;
+}
+
+.add-record-modal {
+  height: min(720px, calc(100dvh - 48px));
+  overflow: hidden;
+}
+
+.account-card:has(.account-edit-form) {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.account-edit-form {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+.account-modal-list {
+  min-height: 0;
+}
+
+.account-card-main strong {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.backup-preview-brief strong,
+.backup-preview-brief span {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.backup-preview-grid article,
+.backup-preview-grid strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.hidden-fund-preview {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+}
+
+.hidden-fund-preview strong,
+.hidden-fund-preview span {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.app-datepicker-calendar {
+  max-width: calc(100vw - 24px);
+  max-height: calc(100dvh - 24px);
+  overflow: auto;
+}
+
+.app-datepicker-calendar .react-datepicker__day-name,
+.app-datepicker-calendar .react-datepicker__day {
+  width: min(1.9rem, calc((100vw - 56px) / 7 - 0.16rem));
+  line-height: 1.9rem;
+  margin: 0.08rem;
+}
+
+.chart-tooltip strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+@container workspace (min-width: 1200px) {
+  .account-overview-grid {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
   }
 }
 
-@media (max-width: 680px) {
-  .fund-panel,
-  .workspace {
-    padding: 16px;
+@container workspace (max-width: 850px) {
+  .summary-strategy-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .summary-grid,
-  .input-grid,
-  .tables-grid,
-  .buy-grid,
-  .form-row,
-  .trade-sell-core-row,
-  .trade-sell-support-row {
-    grid-template-columns: 1fr;
+  .chart-block .table-title {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .range-switcher {
+    justify-content: flex-start;
+  }
+
+  .table-scroll-hint {
+    display: block;
+  }
+}
+
+@container workspace (max-width: 600px) {
+  .account-overview-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .account-overview-grid .metric-card:last-child:nth-child(odd) {
+    grid-column: span 2;
+  }
+
+  .summary-band-grid-primary,
+  .summary-band-grid-secondary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .data-form,
+  .table-block,
+  .chart-block {
+    padding: 12px;
+  }
+
+  .fund-workspace {
+    gap: 16px;
+  }
+
+  .workspace-header h2 {
+    font-size: 1.3rem;
   }
 
   .workspace-header {
     align-items: flex-start;
-    flex-direction: column;
+    gap: 10px;
+  }
+}
+
+@container workspace (max-width: 420px) {
+  .summary-strategy-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 980px) {
+  body {
+    height: auto;
+    min-height: 100dvh;
+    overflow: auto;
   }
 
-  .fund-action-menu {
-    align-self: flex-end;
+  .app-shell {
+    grid-template-columns: minmax(0, 1fr);
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
   }
 
-  .table-title,
-  .modal-header,
-  .pagination,
-  .button-row,
-  .range-switcher {
-    align-items: stretch;
-    flex-direction: column;
+  .fund-panel {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 44px;
+    gap: 10px;
+    height: auto;
+    max-height: none;
+    padding: 12px 16px;
+    overflow: visible;
+  }
+
+  .fund-panel-top {
+    grid-column: 1 / -1;
+  }
+
+  .panel-header .eyebrow {
+    display: none;
+  }
+
+  .panel-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .account-entry {
+    margin-top: 10px;
+    min-height: 50px;
+    padding: 7px 10px;
+    grid-template-columns: 32px minmax(0, 1fr) auto;
+  }
+
+  .account-entry-avatar {
+    width: 32px;
+    height: 32px;
+  }
+
+  .fund-navigation-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-height: 42px;
+    padding: 8px 12px;
+    border: 1px solid rgba(137, 210, 205, 0.3);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.07);
+    color: #ffffff;
+    text-align: left;
+  }
+
+  .fund-navigation {
+    display: none;
+    grid-column: 1 / -1;
+    grid-row: 3;
+    max-height: min(420px, 60dvh);
+  }
+
+  .navigation-open .fund-navigation {
+    display: flex;
+  }
+
+  .fund-navigation .fund-search {
+    flex-shrink: 0;
+  }
+
+  .fund-list {
+    max-height: min(320px, 40dvh);
+  }
+
+  .fund-panel-bottom {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .add-fund-trigger {
+    min-height: 42px;
+    height: 100%;
+    padding: 0;
+  }
+
+  .workspace {
+    height: auto;
+    padding: 20px;
+    overflow: visible;
+  }
+
+  .empty-state {
+    min-height: 280px;
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 680px) {
+  .workspace {
+    padding: 16px;
+  }
+
+  .form-row,
+  .trade-sell-core-row,
+  .trade-sell-support-row,
+  .dividend-core-row,
+  .dividend-support-row,
+  .input-grid,
+  .tables-grid,
+  .manual-price-form {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .modal-backdrop {
@@ -63,17 +425,138 @@
   }
 
   .modal-panel {
-    max-height: calc(100vh - 24px);
+    max-height: calc(100dvh - 24px);
     padding: 14px;
+    gap: 12px;
+  }
+
+  .nav-history-modal,
+  .add-record-modal {
+    height: min(720px, calc(100dvh - 24px));
   }
 
   .account-card,
-  .account-edit-form,
   .account-create-form {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .account-edit-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .account-edit-form input {
+    grid-column: 1 / -1;
   }
 
   .account-card-actions {
     justify-content: flex-start;
+    flex-wrap: wrap;
   }
+
+  .backup-preview-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .hidden-fund-item {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .hidden-fund-actions {
+    justify-content: flex-start;
+  }
+
+  input,
+  select,
+  textarea {
+    font-size: 1rem;
+  }
+
+  .secondary-button,
+  .modal-actions button {
+    min-height: 42px;
+    padding-block: 8px;
+  }
+
+  .import-textarea-field textarea {
+    min-height: 140px;
+  }
+
+  .app-notice-region {
+    right: 12px;
+    bottom: max(12px, env(safe-area-inset-bottom));
+    width: calc(100% - 24px);
+  }
+}
+
+@media (max-height: 480px) {
+  .nav-history-modal,
+  .add-record-modal {
+    height: auto;
+    overflow: auto;
+  }
+
+  .modal-table {
+    min-height: 120px;
+    height: min(320px, 50dvh);
+  }
+
+  .add-record-modal .data-form {
+    overflow: visible;
+  }
+}
+
+.viewport-menu {
+  position: fixed;
+  right: auto;
+  z-index: 18;
+  max-width: calc(100vw - 24px);
+  max-height: calc(100dvh - 24px);
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+body:has(.modal-backdrop) {
+  overflow: hidden;
+}
+
+.app-notice-region {
+  max-height: calc(100dvh - 40px);
+  overflow: auto;
+}
+
+.app-notice > div {
+  min-width: 0;
+}
+
+@media (min-width: 981px) and (max-height: 600px) {
+  .fund-panel {
+    overflow-y: auto;
+  }
+
+  .fund-navigation {
+    flex: 0 0 auto;
+  }
+
+  .fund-list {
+    max-height: 280px;
+    flex: 0 0 auto;
+  }
+}
+
+.workspace-loading {
+  position: fixed;
+  z-index: 50;
+  padding: 16px;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+/* A hidden chart tooltip must not enlarge the document after a resize. */
+.chart-tooltip-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 15;
+  pointer-events: none;
+  overflow: hidden;
 }

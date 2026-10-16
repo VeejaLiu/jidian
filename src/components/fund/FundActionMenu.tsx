@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
+import { ViewportMenu } from "../ViewportMenu";
 import type { Fund } from "../../types/fund";
 
 export type FundAction = "dropRate" | "syncNav" | "manualPrice" | "hideFund";
@@ -13,24 +14,6 @@ export function FundActionMenu({ busy, fund, onSelect }: FundActionMenuProps) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const isStock = fund.assetType === "stock";
-
-  useEffect(() => {
-    if (!open) return undefined;
-
-    const onPointerDown = (event: PointerEvent) => {
-      if (!menuRef.current?.contains(event.target as Node)) setOpen(false);
-    };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
-    };
-
-    document.addEventListener("pointerdown", onPointerDown);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [open]);
 
   const selectAction = (action: FundAction) => {
     setOpen(false);
@@ -51,7 +34,7 @@ export function FundActionMenu({ busy, fund, onSelect }: FundActionMenuProps) {
         ⋯
       </button>
       {open && (
-        <div className="fund-action-panel" role="menu">
+        <ViewportMenu className="fund-action-panel" anchorRef={menuRef} onClose={() => setOpen(false)}>
           {!isStock && (
             <button type="button" role="menuitem" onClick={() => selectAction("dropRate")}>
               <strong>修改跌幅阈值</strong>
@@ -70,7 +53,7 @@ export function FundActionMenu({ busy, fund, onSelect }: FundActionMenuProps) {
             <strong>隐藏资产</strong>
             <span>从左侧列表移除，保留交易和价格数据</span>
           </button>
-        </div>
+        </ViewportMenu>
       )}
     </div>
   );

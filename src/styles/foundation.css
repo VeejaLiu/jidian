@@ -62,6 +62,7 @@
 body {
   margin: 0;
   height: 100vh;
+  height: 100dvh;
   overflow: hidden;
   background: var(--bg);
   color: var(--ink);
@@ -73,8 +74,17 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
+}
+
+button,
+input,
+select,
+textarea {
+  min-width: 0;
+  max-width: 100%;
 }
 
 button {

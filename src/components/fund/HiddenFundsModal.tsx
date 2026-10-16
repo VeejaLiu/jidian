@@ -53,17 +53,14 @@ export function HiddenFundsModal({
             <p className="empty-row">暂无隐藏的基金</p>
           ) : (
             funds.map((fund) => (
-              <button
+              <div
                 className="hidden-fund-item"
                 key={fund.id}
-                type="button"
-                disabled={busy}
-                onClick={() => onPreview(fund)}
               >
-                <div>
+                <button className="hidden-fund-preview" type="button" disabled={busy} onClick={() => onPreview(fund)}>
                   <strong>{fund.name}</strong>
                   <span>{[fund.code, fund.fundType].filter(Boolean).join(" / ") || "未填写代码"}</span>
-                </div>
+                </button>
                 <div className="hidden-fund-actions">
                   <button
                     className="secondary-button"
@@ -77,7 +74,7 @@ export function HiddenFundsModal({
                     恢复显示
                   </button>
                 </div>
-              </button>
+              </div>
             ))
           )}
         </div>

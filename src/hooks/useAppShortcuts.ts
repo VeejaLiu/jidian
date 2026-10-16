@@ -6,6 +6,7 @@ interface UseAppShortcutsOptions {
   addingFundBusy: boolean;
   selectedFund: Fund | null;
   searchInputRef: RefObject<HTMLInputElement | null>;
+  onOpenSearch: () => void;
   onOpenAddFund: () => void;
   onSyncNav: () => void;
 }
@@ -15,6 +16,7 @@ export function useAppShortcuts({
   addingFundBusy,
   selectedFund,
   searchInputRef,
+  onOpenSearch,
   onOpenAddFund,
   onSyncNav,
 }: UseAppShortcutsOptions) {
@@ -29,8 +31,11 @@ export function useAppShortcuts({
       }
       if (key === "f") {
         event.preventDefault();
-        searchInputRef.current?.focus();
-        searchInputRef.current?.select();
+        onOpenSearch();
+        requestAnimationFrame(() => {
+          searchInputRef.current?.focus();
+          searchInputRef.current?.select();
+        });
       }
       if (key === "r") {
         event.preventDefault();
@@ -39,5 +44,5 @@ export function useAppShortcuts({
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [addingFundBusy, busy, onOpenAddFund, onSyncNav, searchInputRef, selectedFund]);
+  }, [addingFundBusy, busy, onOpenAddFund, onOpenSearch, onSyncNav, searchInputRef, selectedFund]);
 }

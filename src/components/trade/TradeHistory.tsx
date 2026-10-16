@@ -127,7 +127,7 @@ export function TradeHistory({ fund, busy, onAddRecord, onEditTrade, onDeleteTra
         </div>
         <button className="secondary-button add-record-button" type="button" disabled={busy} onClick={onAddRecord}>添加记录</button>
       </div>
-      <div className="table-wrap buy-history-wrap">
+      <div className="table-wrap buy-history-wrap" role="region" aria-label="交易记录表格，可横向滚动" tabIndex={0}>
         <table>
           <thead>
             <tr>
@@ -159,6 +159,7 @@ export function TradeHistory({ fund, busy, onAddRecord, onEditTrade, onDeleteTra
           />
         </table>
       </div>
+      <p className="table-scroll-hint">左右滑动查看完整记录，操作按钮始终保留在右侧。</p>
       <div className="pagination compact-pagination">
         {records.length > pageSize && (
           <>

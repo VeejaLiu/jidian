@@ -9,6 +9,8 @@ interface FundSidebarProps {
   busy: boolean;
   addingBusy: boolean;
   searchValue: string;
+  navigationOpen: boolean;
+  onNavigationOpenChange: (open: boolean) => void;
   searchInputRef?: RefObject<HTMLInputElement | null>;
   onSearchChange: (value: string) => void;
   onOpenAddFund: () => void;
@@ -24,6 +26,8 @@ export function FundSidebar({
   busy,
   addingBusy,
   searchValue,
+  navigationOpen,
+  onNavigationOpenChange,
   searchInputRef,
   onSearchChange,
   onOpenAddFund,
@@ -45,7 +49,7 @@ export function FundSidebar({
   }, [visibleFunds]);
 
   return (
-    <aside className="fund-panel" aria-label="资产列表">
+    <aside className={`fund-panel${navigationOpen ? " navigation-open" : ""}`} aria-label="资产列表">
       <div className="fund-panel-top">
         <div className="panel-header">
           <div>
@@ -65,7 +69,20 @@ export function FundSidebar({
           </span>
           <span className="account-entry-action">管理</span>
         </button>
+      </div>
 
+      <button
+        className="fund-navigation-toggle"
+        type="button"
+        aria-expanded={navigationOpen}
+        aria-controls="fund-navigation"
+        onClick={() => onNavigationOpenChange(!navigationOpen)}
+      >
+        <span>{navigationOpen ? "收起资产列表" : "展开资产列表"}（{funds.length}）</span>
+        <span aria-hidden="true">{navigationOpen ? "▴" : "▾"}</span>
+      </button>
+
+      <div className="fund-navigation" id="fund-navigation">
         <label className="fund-search">
           <span>搜索</span>
           <input
@@ -76,44 +93,47 @@ export function FundSidebar({
             disabled={busy}
           />
         </label>
-      </div>
-
-      <div className="fund-list">
-        {visibleFunds.length === 0 ? (
-          <p className="fund-meta">{funds.length === 0 ? "还没有资产。" : "没有匹配的资产。"}</p>
-        ) : (
-          groupedFunds.map((group) => (
-            <section key={group.key} className="fund-group" aria-label={group.title}>
-              <div className="fund-group-header">
-                <span>{group.title}</span>
-                <small>{group.items.length}</small>
-              </div>
-              <div className="fund-group-list">
-                {group.items.map((fund) => (
-                  <button
-                    key={fund.id}
-                    className={`fund-item${fund.id === selectedFundId ? " active" : ""}`}
-                    type="button"
-                    disabled={busy || addingBusy}
-                    onClick={() => onSelectFund(fund.id)}
-                  >
-                    <span className="fund-name-row">
-                      <span className="fund-name">{fund.name}</span>
-                      {fund.status?.state === "triggered" && <span className="fund-warning-badge">已触发</span>}
-                    </span>
-                    <span className="fund-meta">
-                      {[fund.code, fund.fundType].filter(Boolean).join(" / ") || "未填写代码"}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </section>
-          ))
-        )}
+        <div className="fund-list">
+          {visibleFunds.length === 0 ? (
+            <p className="fund-meta">{funds.length === 0 ? "还没有资产。" : "没有匹配的资产。"}</p>
+          ) : (
+            groupedFunds.map((group) => (
+              <section key={group.key} className="fund-group" aria-label={group.title}>
+                <div className="fund-group-header">
+                  <span>{group.title}</span>
+                  <small>{group.items.length}</small>
+                </div>
+                <div className="fund-group-list">
+                  {group.items.map((fund) => (
+                    <button
+                      key={fund.id}
+                      className={`fund-item${fund.id === selectedFundId ? " active" : ""}`}
+                      type="button"
+                      disabled={busy || addingBusy}
+                      onClick={() => {
+                        onSelectFund(fund.id);
+                        onNavigationOpenChange(false);
+                      }}
+                      title={fund.name}
+                    >
+                      <span className="fund-name-row">
+                        <span className="fund-name">{fund.name}</span>
+                        {fund.status?.state === "triggered" && <span className="fund-warning-badge">已触发</span>}
+                      </span>
+                      <span className="fund-meta">
+                        {[fund.code, fund.fundType].filter(Boolean).join(" / ") || "未填写代码"}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            ))
+          )}
+        </div>
       </div>
 
       <div className="fund-panel-bottom">
-        <button className="fund-item add-fund-trigger" type="button" disabled={busy || addingBusy} onClick={onOpenAddFund}>
+        <button className="fund-item add-fund-trigger" type="button" aria-label="添加资产" disabled={busy || addingBusy} onClick={onOpenAddFund}>
           <span className="plus-mark">+</span>
         </button>
       </div>

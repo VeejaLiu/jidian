@@ -18,6 +18,8 @@ interface AppMainProps {
   tradeForm: ReturnType<typeof useTradeForm>;
   busy: { active: boolean; label: string };
   fundSearch: string;
+  assetNavigationOpen: boolean;
+  onAssetNavigationOpenChange: (open: boolean) => void;
   searchInputRef: RefObject<HTMLInputElement | null>;
   onSearchChange: (value: string) => void;
   onOpenAddFund: () => void;
@@ -35,6 +37,8 @@ export function AppMain({
   tradeForm,
   busy,
   fundSearch,
+  assetNavigationOpen,
+  onAssetNavigationOpenChange,
   searchInputRef,
   onSearchChange,
   onOpenAddFund,
@@ -51,6 +55,8 @@ export function AppMain({
         busy={busy.active}
         addingBusy={assets.addingFundBusy}
         searchValue={fundSearch}
+        navigationOpen={assetNavigationOpen}
+        onNavigationOpenChange={onAssetNavigationOpenChange}
         searchInputRef={searchInputRef}
         onSearchChange={onSearchChange}
         onOpenAddFund={onOpenAddFund}

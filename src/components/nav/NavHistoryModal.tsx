@@ -41,7 +41,7 @@ export function NavHistoryModal({ fund, modal, busy, onClose, onPrev, onNext }: 
             ×
           </button>
         </div>
-        <div className="table-wrap modal-table">
+        <div className="table-wrap modal-table" role="region" aria-label={isStock ? "历史价格表格，可横向滚动" : "历史净值表格，可横向滚动"} tabIndex={0}>
           {modal.loading && (
             <div className="modal-table-loading" aria-live="polite">
               <div className="spinner small" aria-hidden="true"></div>

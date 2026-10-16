@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import * as echarts from "echarts/core";
 import { GridComponent, TooltipComponent } from "echarts/components";
 import { CandlestickChart, LineChart, ScatterChart } from "echarts/charts";
@@ -22,6 +23,7 @@ export function NavChart({ fund, data, loading, busy, onViewAllNav }: NavChartPr
   const isStock = fund.assetType === "stock";
   const chartRef = useRef<HTMLDivElement | null>(null);
   const instanceRef = useRef<echarts.ECharts | null>(null);
+  const tooltipLayerRef = useRef<HTMLDivElement | null>(null);
   const [rangeKey, setRangeKey] = useState("6m");
   const filteredData = useMemo(() => filterChartData(data, rangeKey), [data, rangeKey]);
   const renderAsKLine = isStock && filteredData.nav.some(hasStockOhlcData);
@@ -30,11 +32,17 @@ export function NavChart({ fund, data, loading, busy, onViewAllNav }: NavChartPr
     if (!chartRef.current) return undefined;
     instanceRef.current = echarts.init(chartRef.current);
 
-    const resize = () => instanceRef.current?.resize();
+    const resize = () => {
+      instanceRef.current?.dispatchAction({ type: "hideTip" });
+      instanceRef.current?.resize();
+    };
     window.addEventListener("resize", resize);
+    const observer = new ResizeObserver(resize);
+    observer.observe(chartRef.current);
 
     return () => {
       window.removeEventListener("resize", resize);
+      observer.disconnect();
       instanceRef.current?.dispose();
       instanceRef.current = null;
     };
@@ -96,8 +104,18 @@ export function NavChart({ fund, data, loading, busy, onViewAllNav }: NavChartPr
         tooltip: {
           trigger: "axis",
           axisPointer: { type: "cross" },
-          appendTo: "body",
+          appendTo: () => tooltipLayerRef.current || document.body,
           confine: false,
+          enterable: true,
+          transitionDuration: 0,
+          position: (point, _params, _dom, _rect, size) => {
+            const bounds = chartRef.current?.getBoundingClientRect();
+            if (!bounds) return point;
+            return [
+              Math.max(12 - bounds.left, Math.min(point[0] + 12, window.innerWidth - bounds.left - size.contentSize[0] - 12)),
+              Math.max(12 - bounds.top, Math.min(point[1] + 12, window.innerHeight - bounds.top - size.contentSize[1] - 12)),
+            ];
+          },
           className: "chart-tooltip-shell",
           backgroundColor: "transparent",
           borderWidth: 0,
@@ -226,6 +244,7 @@ export function NavChart({ fund, data, loading, busy, onViewAllNav }: NavChartPr
         {!loading && navCount === 0 && <div className="chart-empty">暂无可展示的{isStock ? "价格" : "净值"}走势</div>}
         <div className="chart-canvas" ref={chartRef} aria-label={`${fund.name}${isStock ? (renderAsKLine ? "K 线" : "价格") : "净值"}走势图`} />
       </div>
+      {createPortal(<div className="chart-tooltip-layer" ref={tooltipLayerRef} />, document.body)}
     </section>
   );
 }

@@ -17,6 +17,15 @@ export function DatePicker({ value, disabled, onChange }: DatePickerProps) {
       className="date-input"
       calendarClassName="app-datepicker-calendar"
       popperClassName="app-datepicker-popper"
+      portalId="jidian-datepicker-portal"
+      popperProps={{ strategy: "fixed" }}
+      popperModifiers={[{
+        name: "viewportBounds",
+        fn: ({ x, y, rects }) => ({
+          x: Math.max(12, Math.min(x, window.innerWidth - rects.floating.width - 12)),
+          y: Math.max(12, Math.min(y, window.innerHeight - rects.floating.height - 12)),
+        }),
+      }]}
       dateFormat="yyyy-MM-dd"
       disabled={disabled}
       locale="zh-CN"

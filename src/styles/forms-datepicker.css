@@ -63,6 +63,7 @@
 
 .app-datepicker-popper {
   z-index: 30;
+  margin: 0;
 }
 
 .app-datepicker-calendar {

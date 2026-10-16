@@ -20,6 +20,7 @@ export function App() {
   const [addFundModalOpen, setAddFundModalOpen] = useState(false);
   const [hiddenFundsModalOpen, setHiddenFundsModalOpen] = useState(false);
   const [fundSearch, setFundSearch] = useState("");
+  const [assetNavigationOpen, setAssetNavigationOpen] = useState(false);
   const [chartRefreshKey, setChartRefreshKey] = useState(0);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -126,6 +127,7 @@ export function App() {
     addingFundBusy: assets.addingFundBusy,
     selectedFund: assets.selectedFund,
     searchInputRef,
+    onOpenSearch: () => setAssetNavigationOpen(true),
     onOpenAddFund: () => setAddFundModalOpen(true),
     onSyncNav: assetActions.handleSyncNav,
   });
@@ -176,6 +178,8 @@ export function App() {
         tradeForm={tradeForm}
         busy={busy}
         fundSearch={fundSearch}
+        assetNavigationOpen={assetNavigationOpen}
+        onAssetNavigationOpenChange={setAssetNavigationOpen}
         searchInputRef={searchInputRef}
         onSearchChange={setFundSearch}
         onOpenAddFund={() => setAddFundModalOpen(true)}

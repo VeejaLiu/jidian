@@ -1,9 +1,12 @@
 .workspace {
   position: relative;
   min-height: 0;
+  min-width: 0;
   height: 100vh;
+  height: 100dvh;
   padding: 30px;
   overflow: auto;
+  container: workspace / inline-size;
 }
 
 .account-overview {
@@ -404,22 +407,6 @@
   margin-left: auto;
 }
 
-@media (max-width: 1180px) {
-  .summary-band-grid-primary,
-  .summary-strategy-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 860px) {
-  .summary-band-grid,
-  .summary-band-grid-primary,
-  .summary-band-grid-secondary,
-  .summary-strategy-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
 .status-chip {
   display: inline-flex;
   align-items: center;
@@ -533,31 +520,4 @@
 
 .buy-grid .data-form {
   align-content: start;
-}
-
-@media (max-width: 1180px) {
-  .summary-band-grid,
-  .summary-strategy-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 720px) {
-  .summary-band {
-    padding: 10px;
-  }
-
-  .summary-band-grid,
-  .summary-strategy-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .summary-band-header {
-    align-items: start;
-    flex-direction: column;
-  }
-
-  .trigger-tags {
-    gap: 6px;
-  }
 }
