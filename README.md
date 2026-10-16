@@ -37,13 +37,13 @@ A local-first portfolio tracker for Chinese mutual funds and A-shares, with mult
 
 | 文件 | 用途 |
 | --- | --- |
-| `jidian-1.0.0-macos-universal.dmg` | 推荐；同时支持 Apple Silicon（M 系列）和 Intel Mac |
-| `jidian-1.0.0-macos-universal.zip` | 相同应用的 ZIP 压缩包 |
+| `jidian-1.0.1-macos-universal.dmg` | 推荐；同时支持 Apple Silicon（M 系列）和 Intel Mac |
+| `jidian-1.0.1-macos-universal.zip` | 相同应用的 ZIP 压缩包 |
 | `SHA256SUMS.txt` | 校验下载文件是否完整 |
 
 打开 DMG，将「基点」拖入「应用程序」，然后启动。桌面版自带运行环境，无需安装 Node.js。
 
-**v1.0.0 未使用 Apple Developer ID 签名，也未提交 Apple 公证。** macOS 可能拦截首次打开；确认文件来自本仓库并核对校验值后，可在「系统设置 → 隐私与安全性」中按系统提示允许打开。请以 Release 页面标明的签名状态为准。
+**v1.0.1 未使用 Apple Developer ID 签名，也未提交 Apple 公证。** macOS 可能拦截首次打开；确认文件来自本仓库并核对校验值后，可在「系统设置 → 隐私与安全性」中按系统提示允许打开。请以 Release 页面标明的签名状态为准。
 
 在下载目录校验文件：
 
